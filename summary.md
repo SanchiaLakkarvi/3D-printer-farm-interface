@@ -90,3 +90,17 @@ Read-only Prusa Connect access will support investigation and monitoring. The av
 A mock printer server will be developed to simulate the behaviour of the physical Prusa printers during development. It will provide simulated printer states and responses, allowing normal workflows and failure conditions to be tested when direct access to physical printers is unavailable.
 
 Development testing will also use simplified G-code where appropriate. Controlled end-to-end testing with a physical printer will be performed near the end of development to validate the complete print-job workflow.
+
+# References
+
+Prusa Research. (n.d.-a). *Prusa Connect and PrusaLink explained*. Prusa Knowledge Base.
+https://help.prusa3d.com/article/prusa-connect-and-prusalink-explained_302608?product=prusa-connect
+
+Prusa Research. (n.d.-b). *Prusa Connect SDK for Printer*. GitHub.
+https://github.com/prusa3d/Prusa-Connect-SDK-Printer
+
+Prusa Research. (n.d.-c). *Buddy3D camera printer view [Photograph]*. Prusa Research.
+https://www.prusa3d.com/cdn-cgi/image/width=750,format=auto,quality=85/content/wysiwyg/fotky/snapshot-Buddy3D%20Camera-1732719528.jpg
+
+The University of Western Australia. (n.d.). *UWA printing service*.
+https://print.uwa.edu.au
