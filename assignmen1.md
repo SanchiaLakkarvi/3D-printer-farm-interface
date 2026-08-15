@@ -341,3 +341,165 @@ Evidence includes:
 
 
 ---
+# Section 3: Project Planning and Management
+
+## 3.1 Team Structure and Responsibilities
+
+The project is being completed by a team of five students. Primary responsibilities have been allocated according to each member’s interests and technical strengths, while all members will contribute to planning, development, testing and documentation.
+
+| Team member | Primary project responsibility | Assignment 1 responsibility |
+| --- | --- | --- |
+| Sanchia Recson Lakkarvi | Frontend development, user-interface design and project-planning coordination | Project Planning and Management |
+| Nuwanga | Backend development and implementation of the system’s internal and external interfaces | Problem Statement and Gantt chart |
+| Sahil Pankajbhai Patel | Requirements analysis, MVP definition and testing coordination | Client Communication and MVP Agreement |
+| Su-Yeon Yang (Jesse) | Database design, data management and GitHub Project-board maintenance | Risk and Technology Assessments |
+| Han Nguyen | Supporting research, documentation, meeting-minute coordination and development assistance | Executive Summary and research into existing systems and resources |
+
+These responsibilities establish accountability without preventing collaboration. Authentication, available Prusa-interface integration, queue management and end-to-end testing affect several components and will therefore be completed collaboratively. The allocation will be reviewed during weekly meetings and adjusted if workloads become uneven or technical requirements change. Changes to ownership will be recorded in the meeting minutes and GitHub Project board.
+
+## 3.2 Project Management Approach
+
+The team will use an adapted Agile approach with weekly iterations. This is appropriate because access to Prusa Connect, the precise interfaces available for integration and the format of the client’s sample G-code still require investigation. Weekly iterations allow the team to test assumptions, obtain feedback and adjust the implementation without delaying the entire project.
+
+GitHub Projects will be the central task-management tool. GitHub Projects integrates issues and pull requests into adaptable board, table and roadmap views for planning and tracking work [1]. Each work item will be represented by an issue or task with an owner, priority, due date and status. The workflow is:
+
+1. **Backlog** — identified work that has not yet been selected.
+2. **Ready** — sufficiently defined and prioritised for development.
+3. **In Progress** — actively being completed by the assignee.
+4. **In Review** — implementation or documentation awaiting peer review.
+5. **Testing** — reviewed work undergoing verification against its acceptance criteria.
+6. **Done** — work that satisfies the Definition of Done in Section 3.8.
+
+At the beginning of each iteration, the team will select the highest-priority ready items and confirm their acceptance criteria. Progress, blockers and workload will be reviewed at the weekly meeting. Incomplete work will be re-estimated and rescheduled rather than marked complete.
+
+- **Project board:** [3D Printer Farm Project Board](https://github.com/users/SanchiaLakkarvi/projects/1)
+- **GitHub repository:** [3D Printer Farm Interface](https://github.com/SanchiaLakkarvi/3D-printer-farm-interface)
+
+## 3.3 Communication, Meetings and Access
+
+Microsoft Teams will be used for team discussions, meeting invitations, shared documents and communication with the facilitator. GitHub will be used for source code, issues, technical documentation and evidence of development activity.
+
+The team will meet internally each week to review completed work, discuss blockers and allocate the next tasks. Additional technical sessions may be arranged for integration and testing. Client progress meetings are planned approximately fortnightly, subject to availability, and the team will attend scheduled facilitator meetings.
+
+Each formal meeting will have an agenda and minutes recording the date, duration, attendees, discussion points, decisions, actions, owners and due dates. Han will coordinate meeting minutes, while the chair of each meeting will check their accuracy. Important decisions made through informal messages will be transferred to the relevant minutes or GitHub issue.
+
+- **Teams group chat:** [CITS5206 Capstone Project](https://teams.microsoft.com/l/chat/19:6ac1f08bbe3842ac9482806611f8d65c@thread.v2/conversations?context=%7B%22contextType%22%3A%22chat%22%7D)
+- **Teams channel:** [Group 16 — CITS5206](https://teams.microsoft.com/l/channel/19%3ArHO415s3NliOh0Xvy5c56TTmpTiefwlMZl0XpurCo3E1%40thread.tacv2/Group%2016?groupId=4259f431-6994-4e09-90b6-cac70831356a&tenantId=05894af0-cb28-46d8-8716-74cdb46e2226&ngc=true)
+- **Meeting minutes:** [Meeting Minutes folder](https://github.com/SanchiaLakkarvi/3D-printer-farm-interface/tree/main/Meeting%20Minutes)
+- **Gantt chart:** [3D Printer Farm Gantt Chart](https://uniwa-my.sharepoint.com/:x:/r/personal/24684008_student_uwa_edu_au/Documents/Microsoft%20Teams%20Chat%20Files/3D%20Printer%20Farm%20Gantt%20Draft%20.xlsx?d=w051a67770a5b42218d517edcfc95b31f&csf=1&web=1&e=O2KhUP)
+
+Before submission, the team will test these links using the facilitator’s account or a non-owner account. The facilitator will be granted access to the repository, Project board, Teams channel, meeting minutes and Gantt chart. An accessible copy of the Gantt chart will also be committed to the GitHub repository so that project evidence is not dependent on a personal SharePoint link.
+
+## 3.4 Initial Product Backlog
+
+The backlog aligns with the confirmed MVP described in Sections 1 and 2: authentication and role-based access control, G-code submission and validation, compatible-printer selection, queue management, job tracking, notifications, the farmer collection workflow and basic usage reporting. Items that depend on unconfirmed pricing, approval or integration rules are explicitly recorded as open decisions rather than guaranteed MVP functionality.
+
+| Priority | Backlog item | Expected outcome |
+| --- | --- | --- |
+| **Must have** | Email-based authentication and role-based access control | Approved users can sign in, and student/staff, farmer and administrator permissions are separated. |
+| **Must have** | Printer list | Users can view available printers, status, supported material, colour and availability. |
+| **Must have** | Pre-sliced G-code upload | Users can upload an accepted, human-readable G-code file. |
+| **Must have** | G-code validation | The system checks the file against the approved printer and slicing constraints available to the team. |
+| **Must have** | Print-duration and filament-use estimation | Before submission, the system displays the estimated duration and filament required using information available in the G-code or approved parsing rules. |
+| **Must have** | Compatible-printer selection | A user can select a compatible printer or printer group. |
+| **Must have** | Compatibility-aware queue management | Jobs follow first-come, first-served ordering within a compatible printer queue or printer group. An incompatible job does not block another compatible job from using an available printer. |
+| **Must have** | Job tracking | Users can view the current status and relevant progress information for their jobs. |
+| **Must have** | Farmer collection workflow | Farmers can record printing, completion, removal and readiness for collection. |
+| **Must have** | Basic notifications | Relevant users receive email notifications for major status changes, including completion or readiness for collection. |
+| **Must have** | Administration and basic usage reporting | Administrators can manage relevant users, printers and jobs and view basic usage information. |
+| **Must have** | Printer integration layer | The application communicates through the available Prusa interfaces where access permits, while remaining testable through an internal mock printer service. |
+| **Open decision / Should have** | Indicative price estimation | An indicative cost is displayed only if the client confirms pricing inputs and staff/student billing rules. |
+| **Open decision / Should have** | Approval rules and limits | Approval is applied only if the client confirms thresholds for duration, filament, cost or configuration. |
+| **Future / Stretch** | Automatic remaining-filament tracking | The system estimates remaining spool quantity from recorded spool data, job consumption and manual corrections. This is distinct from estimating the filament required by an uploaded job. |
+| **Could have** | Expanded analytics | Detailed printer, user, teaching-unit and cost reports are available. |
+| **Future** | STL upload and online slicing | Users can upload STL files and slice them through the web platform. |
+| **Future** | Camera monitoring | Authorised users can view printer images or a live camera feed. |
+| **Future** | Real payment processing | Personal payments can be processed through an approved external payment service. |
+
+### Queue Rule
+
+Jobs will follow first-come, first-served ordering within a compatible printer queue or printer group. A job that is incompatible with an available printer will not prevent another compatible job from using that printer.
+
+For example, if an earlier job can run only on a Prusa XL while a later job is compatible with an available Prusa CORE One, the later compatible job may use the CORE One without changing the earlier job’s relative position in the XL-compatible queue.
+
+## 3.5 Initial User Stories
+
+The following user stories describe the main outcomes expected from the MVP and its recorded open decisions:
+
+1. As a student or staff member, I want to sign in using my email so that I can securely access the printing service.
+2. As a user, I want to upload a pre-sliced G-code file so that I can submit a print without manually accessing Prusa Connect.
+3. As a user, I want the system to validate my file so that incompatible or unsafe settings are identified before printing.
+4. As a user, I want to view the estimated print duration, filament required and, where pricing rules are available, the indicative cost before submitting the job.
+5. As a user, I want to select a compatible printer or printer group so that my job enters an appropriate compatibility-aware queue.
+6. As a user, I want to track my job status so that I know whether it is submitted, queued, printing, completed, removed or ready for collection. An approval status will be included only if approval rules are confirmed.
+7. As a farmer, I want to update printing, completion, removal and collection statuses so that users and administrators have accurate job information.
+8. **Open decision:** As an administrator, I want to review jobs exceeding confirmed limits so that long, costly or material-intensive jobs can be controlled. This story will enter the committed scope only if the client confirms the approval thresholds and process.
+9. As an administrator, I want to view basic usage information so that printer utilisation and filament use can be monitored and reported.
+10. As a developer/tester, I want a mock printer service that simulates printer states and responses so that the system can be tested when physical printers are unavailable.
+
+Acceptance criteria will be added to the relevant GitHub issues before development begins. User Story 4 must be accepted even when no cost is displayed if pricing rules remain unavailable; in that case, duration and filament-use estimates remain mandatory. User Story 8 must not be treated as a Must-have item until the client’s decision is documented in meeting minutes.
+
+## 3.6 Milestones and Schedule
+
+| Dates | Main activities | Expected milestone |
+| --- | --- | --- |
+| **27 July–16 August 2026** | Client consultation, problem definition, MVP agreement, risk assessment and initial planning | Project scope and Assignment 1 completed |
+| **17–30 August 2026** | Architecture, database schema, interface wireframes, investigation of available Prusa interfaces and development-environment setup | Technical foundation reviewed by the team |
+| **31 August–13 September 2026** | Authentication, roles, printer list, G-code upload, validation, duration and filament-use estimation | First usable vertical prototype |
+| **14–27 September 2026** | Compatible-printer selection, compatibility-aware queue management and job tracking; investigate price and approval rules if confirmed | Core job-submission workflow completed |
+| **28 September–11 October 2026** | Farmer collection workflow, notifications, administration, basic reporting and integration | Feature-complete MVP |
+| **12 October–1 November 2026** | Unit, integration, end-to-end and usability testing; available physical-printer testing; client feedback; defect correction and documentation | Validated system and project handover |
+
+The detailed Gantt chart records task owners, dependencies, start and end dates and milestones. If unit deadlines or client availability change, the chart and corresponding GitHub issues will be updated together.
+
+## 3.7 Git and Pull-Request Workflow
+
+Development will take place in the shared GitHub repository. The `main` branch will contain stable, reviewed work. Members will create a separate branch for each feature, defect or documentation task, using names such as `feature/gcode-upload`, `fix/queue-status` or `docs/setup-guide`.
+
+When work is ready, the contributor will open a pull request explaining the change, testing completed and related issue. GitHub issues, pull requests and Projects provide linked mechanisms for assigning responsibility, discussing work and tracking implementation progress [1].
+
+At least one other team member will review each pull request before merge. Review will consider functionality, readability, security, tests and compatibility with the existing system. Significant work will not be merged directly into `main`. The contributor will resolve merge conflicts in consultation with the owner of the affected component. Commits, reviews and pull requests will provide evidence of individual contribution.
+
+## 3.8 Testing and Definition of Done
+
+Mocked and simulated printer behaviour is the team’s testing approach; it is not presented as a client-approved requirement unless that approval is later documented in meeting minutes. The team will build a mock printer service that can reproduce relevant printer states, successful responses and failure conditions when physical printers or integration access are unavailable. Testing against a physical printer and the available Prusa interfaces will be performed when access is provided.
+
+Testing will include unit tests for individual functions, integration tests across the frontend, backend, database and printer-integration boundary, end-to-end tests for the main user workflows, and manual usability testing for students/staff, farmers and administrators. Sahil will coordinate the test plan and testing evidence, while feature owners remain responsible for tests relating to their work.
+
+A backlog item is **Done** only when it satisfies the team’s agreed quality criteria. Specifically:
+
+1. Its agreed acceptance criteria have been met.
+2. The work has been committed to the correct branch.
+3. Relevant tests have passed and evidence is recorded.
+4. Invalid inputs and important error cases have been considered.
+5. Another team member has reviewed the pull request.
+6. The change has been merged without breaking existing functionality.
+7. Related technical and user documentation has been updated.
+8. The GitHub issue and Project-board status have been updated.
+9. The feature has been demonstrated to the team and, where appropriate, the client.
+
+## 3.9 Contribution and Project-Control Tracking
+
+Individual contributions will be recorded through assigned issues, commits, pull requests, reviews, meeting attendance, minutes, design files, testing evidence and documentation. Each member must provide regular progress updates and raise blockers early.
+
+Jesse will maintain the GitHub Project board and check that issues have owners, priorities, dates and correct statuses. Han will coordinate meeting minutes and action records. Sahil will coordinate testing activities and the test-evidence summary. Sanchia will coordinate the overall planning documents and verify that the schedule, repository evidence and Section 3 remain consistent.
+
+The team will review workload distribution weekly, and collaborative issues will record each participant’s contribution for transparent peer evaluation.
+
+## 3.10 Managing Delays and Requirement Changes
+
+Potential delays will be raised during weekly meetings or through Teams as soon as they are identified. The team will assess the affected item’s priority, dependencies and remaining effort and may divide, reassign or reschedule it. The agreed MVP will take priority over optional work.
+
+If access to Prusa Connect, a physical printer or another expected integration route is delayed, development and testing will continue through the mock printer service and an abstraction around the available Prusa interfaces. The wording “Prusa Connect API” will not be used as a guaranteed dependency until the team confirms the specific interface and receives the required access. Prusa’s documentation distinguishes the cloud-based Prusa Connect service from locally accessed PrusaLink [2]. Therefore, the final technical route remains subject to access and investigation.
+
+If the client is temporarily unavailable, questions and assumptions will be grouped, documented and sent for confirmation. New requirements will first be recorded in a GitHub issue or change log with their purpose, priority, effort and schedule effect. A material change to the MVP will require client confirmation and supporting meeting minutes.
+
+If time becomes limited, online STL slicing, live-camera integration, automatic remaining-filament tracking, real payment processing and expanded analytics will remain outside the MVP. Unconfirmed price estimation and approval rules will also remain open decisions.
+
+This protects the guaranteed core workflow: sign in; upload and validate G-code; estimate print duration and filament use; select a compatible printer or printer group; submit to a compatibility-aware queue; track the job; notify the user of major status changes; support the farmer completion and collection process; and provide basic usage reporting.
+
+## References
+
+[1] GitHub, “About Projects,” *GitHub Docs*. [Online]. Available: https://docs.github.com/en/issues/planning-and-tracking-with-projects/learning-about-projects/about-projects. [Accessed: Aug. 15, 2026].
+
+[2] Prusa Research, “Prusa Connect and PrusaLink explained,” *Prusa Knowledge Base*. [Online]. Available: https://help.prusa3d.com/article/prusa-connect-and-prusalink-explained_302608. [Accessed: Aug. 15, 2026].
