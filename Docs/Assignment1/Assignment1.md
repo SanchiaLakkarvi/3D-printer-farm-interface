@@ -508,7 +508,7 @@ This protects the guaranteed core workflow: sign in; upload and validate G-code;
 
 # 4. Risk and Technology Assessment
 
-This section evaluates the technology options for the 3D farm printer interface and identifies the risks associated with the proposed implementation. The evaluation is based on the Minimum Viable Product (MVP) agreed with the client and project team. The MVP includes:
+This section evaluates the technology options for the 3D farm printer interface and identifies the risks associated with the proposed implementations. This evaluation is based on the Minimum Viable Product (MVP) agreed with the client and project team. The aligned MVP includes the following core features:
 
 1. User authentication
 2. User authorisation
@@ -524,11 +524,11 @@ This section evaluates the technology options for the 3D farm printer interface 
 
 | Option                   | Advantages                                                                                       | Disadvantages                     |
 | ------------------------ | ------------------------------------------------------------------------------------------------ | --------------------------------- |
-| **Next.js + TypeScript** | Strong React ecosystem, built-in routing, high developer productivity, easy deployment to Vercel | Higher learning curve             |
-| **React + JavaScript**   | Flexible, large community                                                                        | No compile-time type checking     |
+| **Next.js + TypeScript** | Strong React ecosystem, Built-in routing, High developer productivity, Easy deployment to Vercel | Higher learning curve             |
+| **React + JavaScript**   | Flexible, Large community                                                                        | No compile-time type checking     |
 | **Vue.js**               | Simple and lightweight                                                                           | Smaller ecosystem within the team |
 
-The team selected **Next.js + TypeScript** as the frontend stack. This option provides smooth integration with the Python FastAPI backend and reduces runtime errors through static typing.
+The team selected **Next.js + TypeScript** as the frontend stack for smooth integration with FastAPI and to reduce runtime errors through built-in static typing.
 
 ### 4.1.2 Backend
 
@@ -536,47 +536,76 @@ The team selected **Next.js + TypeScript** as the frontend stack. This option pr
 
 | Option      | Advantages                                                | Disadvantages                  |
 | ----------- | --------------------------------------------------------- | ------------------------------ |
-| **FastAPI** | Async support, easy integration with validation libraries | Smaller ecosystem than Node.js |
-| **Node.js** | Large ecosystem, lightweight                              | More manual configuration      |
+| **FastAPI** | Async support, Easy integration with validation libraries | Smaller ecosystem than Node.js |
+| **Node.js** | Large ecosystem, Lightweight                              | More manual configuration      |
 | **Django**  | Strong admin features                                     | Overengineered for the MVP     |
 
-The system requires REST APIs for communication, G-code validation, queue processing, notification services, and PrusaConnect API integration. **FastAPI** aligns well with these requirements and with the team’s existing Python experience.
+The team selected **FastAPI** as the backend stack for smooth integration between REST APIs, Message broker, database system, and PrusaConnect Printer API. Moreover, the proposed technology aligns well with the team’s overall technical preference and experiences.
 
-### 4.1.3 Database and Queue
+### 4.1.3 Database and Message Queue
 
 | Option         | Advantages                                                                             | Disadvantages                 |
 | -------------- | -------------------------------------------------------------------------------------- | ----------------------------- |
-| **PostgreSQL** | JSON support, open source, integrates well with FastAPI through SQLAlchemy or SQLModel | More administration           |
-| **MongoDB**    | Flexible schema                                                                        | Weaker relational consistency |
+| **PostgreSQL + RabbitMQ**  | JSON support, open source, supports asynchronous processing, reliable message delivery | More administration, requires management of two infrastructure components           |
+| **PostgreSQL** | Simpler architecture, fewer dependencies | Less suitable for asynchronous workflows, Tighter coupling between services           |
+| **MongoDB + RabbitMQ**  | Flexible schema, Asynchronous processing | Weaker relational consistency for entities such as users, roles, printers, print jobs |
 
-The team chose **PostgreSQL** because it provides reliable relational database management and integrates well with the proposed backend stack. Both **SQLModel** and **SQLAlchemy** remain viable options; SQLModel is designed by the creator of FastAPI, while SQLAlchemy is the industry-standard Python ORM.
+The combination of **PostgreSQL + RabbitMQ** was chosen because PostgreSQL provides reliable relational database system and integrates well with the proposed backend stack. Both **SQLModel** and **SQLAlchemy** are the viable options. The integration of RabbitMQ as the message broker allows asynchronous processing for printer jobs and status updates and communication between backend services. These published events are processed as notifications and an update of database.
 
 ### 4.1.4 Authentication and Authorisation
 
-UWA Single Sign-On was excluded from the MVP because the project is external to UWA. Authentication and authorisation will be implemented in FastAPI.
-
-* Passwords will be hashed using a secure password-hashing library such as **bcrypt**.
-* Authenticated users will receive access tokens.
-* Authorisation will be enforced through **role-based access control (RBAC)** for administrators, students, and farmers.
+UWA Single Sign-On is excluded from the methodology due to a demand of external development. Hence authentication and authorisation will be implemented in FastAPI. MVP does not include a centralised SSO server therefore private data such as passwords will be hashed using a secure password-hashing library such as **bcrypt** and Authenticated users will receive access tokens for their session. Authorisation will be enforced through **role-based access control (RBAC)** for administrators, students, and farmers.
 
 ### 4.1.5 Payment Processing
 
-Real payment processing is excluded from the MVP. During development, **Stripe test/sandbox mode** will be used to simulate payments without introducing financial, legal, or compliance obligations. The system must not store real card details.
+Real payment processing is strictly out of project scope. During development, **Stripe test/sandbox mode** will be used to simulate payments to avoid financial, legal, or compliance obligations. 
 
 ### 4.1.6 Printer Integration
 
-The system will integrate with **PrusaConnect APIs** for printer selection, job submission, queue monitoring, and print-status updates. API limitations and availability are considered a significant project risk.
+The system will use **PrusaConnect API** as the interface between the appliation and printer infrastructure. The integration will be tested thoroughly before its implementation. Tests include:
 
-### 4.1.7 Testing
+| Test                   | Method                                        | Expected Result                           |
+| ---------------------- | --------------------------------------------- | ----------------------------------------- |
+| API authentication     | Send request with valid credentials/token     | API accepts request                       |
+| Invalid authentication | Send request with invalid/expired credentials | Request rejected                          |
+| Printer retrieval      | Request available printers                    | Correct printer information returned      |
+| Printer selection      | Select a valid printer                        | Correct printer identified                |
+| Invalid printer        | Request non-existent/unavailable printer      | Appropriate error returned                |
+| File/job submission    | Submit a valid test print                     | Print job accepted                        |
+| Invalid file           | Submit invalid/unsupported file               | Request rejected                          |
+| Status retrieval       | Request active print status                   | Current printer/job status returned       |
+| Status change          | Monitor a test print                          | Status changes are detected               |
+| API failure            | Simulate unavailable API/network              | Backend handles failure without crashing  |
+| Timeout                | Delay API response                            | Request times out safely                  |
+| API limitation    | Send requests according to API limits         | System handles limits without losing jobs |
 
-Testing will include:
 
-* Unit testing for backend services and validation logic
-* Integration testing for API endpoints and database operations
-* Frontend component and workflow testing
-* End-to-end testing for authentication, file upload, queue management, and printing workflows
+### 4.1.7 RabbitMQ Integration
+
+RabbitMQ will be used as the message broker for asynchronous message delivery, supporting the request-response cycle for enhanced reliability. Below is an example cycle:
+
+1. User submits print job
+2. FastAPI validates request
+3. Print job stored in PostgreSQL
+4. FastAPI publishes message to RabbitMQ
+5. Printer consumes message
+6. Printer communicates with PrusaConnect API
+7. Result/status returned
+8. PostgreSQL updated
+9. Notification generated
 
 ---
+
+### 4.1.8 Testing
+
+The technology choices will be validated through several layers of testing including:
+
+1. Unit testing
+2. API integration testing
+3. PrusaConnect integration testing
+4. RabbitMQ integration testing
+5. End-to-end testing
+
 
 ## 4.2 Open Decisions
 
