@@ -14,17 +14,17 @@ Key project risks include limitations of available Prusa interfaces, G-code vali
 
 ## 5.2.1 UWA UniPrint
 
-UWA UniPrint provides a useful reference for a central university printing workflow, where users submit jobs through a shared service rather than interacting directly with individual printers. The proposed system applies this concept to 3D printing, where printer compatibility, material requirements and G-code configuration must also be considered.
+UWA UniPrint provides a useful reference for a central university printing workflow, where users submit jobs through a shared service rather than interacting directly with individual printers (The University of Western Australia, n.d.). The proposed system applies this concept to 3D printing, where printer compatibility, material requirements and G-code configuration must also be considered.
 
 ## 5.2.2 Prusa Connect
 
-Prusa Connect provides the existing web-connected environment for accessing and managing the UWA Prusa printers. However, UWA's current printer-by-printer process does not scale efficiently to a larger user group because users must be managed at the individual printer level and the current process does not provide the central printer-farm queue or university-level usage management required by the project.
+Prusa Connect provides the existing web-connected environment for accessing and managing the UWA Prusa printers (Prusa Research, n.d.-a). However, UWA's current printer-by-printer process does not scale efficiently to a larger user group because users must be managed at the individual printer level and the current process does not provide the central printer-farm queue or university-level usage management required by the project.
 
 Rather than replacing the existing printer infrastructure, the proposed system will provide a university-specific management layer around it. This layer will support role-based user access, central queue management, G-code validation, job and usage tracking, notifications, collection management and reporting. Final pricing values and billing arrangements remain subject to client confirmation.
 
 ## 5.2.3 Prusa Connect Printer SDK
 
-The Prusa Connect Printer SDK is an important resource for investigating communication between printers and the Prusa ecosystem. It provides a basis for understanding printer events, communication and possible integration methods.
+The Prusa Connect Printer SDK is an important resource for investigating communication between printers and the Prusa ecosystem (Prusa Research, n.d.-b). It provides a basis for understanding printer events, communication and possible integration methods.
 
 The SDK does not provide the complete university-level management functionality required by the project. The team will therefore investigate the SDK and available Prusa interfaces to determine how they can support the printer-integration layer, while implementing the required user, queue, validation and management functionality within the proposed system.
 
@@ -55,7 +55,7 @@ The proposed system will therefore use the existing Prusa infrastructure and ava
 
 The project will use the UWA-provided Orginal Prusa XL- 5T Input shaper 0.4 nozzel and Prusa CORE One HF0.4 nozzel printers. Access to physical printers will be controlled, so simulated printer behaviour will support development and testing when direct printer access is unavailable.
 
-Camera integration is outside the core MVP and may be considered as a future extension.
+The Buddy3D camera image is used only as a visual reference in the prototype (Prusa Research, n.d.-c). Live-camera integration is outside the core MVP and may be considered as a future extension.
 
 ## 5.3.2 Software and Development Resources
 
@@ -93,14 +93,20 @@ Development testing will also use simplified G-code where appropriate. Controlle
 
 # References
 
-Prusa Research. (n.d.-a). *Prusa Connect and PrusaLink explained*. Prusa Knowledge Base.
+Prusa Research. (n.d.-a). Prusa Connect and PrusaLink explained. Prusa Knowledge Base.
 https://help.prusa3d.com/article/prusa-connect-and-prusalink-explained_302608?product=prusa-connect
 
-Prusa Research. (n.d.-b). *Prusa Connect SDK for Printer*. GitHub.
+Prusa Research. (n.d.-b). Prusa Connect SDK for Printer. GitHub.
 https://github.com/prusa3d/Prusa-Connect-SDK-Printer
 
-Prusa Research. (n.d.-c). *Buddy3D camera printer view [Photograph]*. Prusa Research.
+Prusa Research. (n.d.-c). Buddy3D camera printer view [Photograph]. Prusa Research.
 https://www.prusa3d.com/cdn-cgi/image/width=750,format=auto,quality=85/content/wysiwyg/fotky/snapshot-Buddy3D%20Camera-1732719528.jpg
 
-The University of Western Australia. (n.d.). *UWA printing service*.
+The University of Western Australia. (n.d.). UWA printing service.
 https://print.uwa.edu.au
+
+## AI-Use Acknowledgement
+
+OpenAI ChatGPT was used during the preparation of this report to provide ideas and suggestions relevant to the project. 
+
+The use of ChatGPT was undertaken in accordance with the University of Western Australia's guidance on the appropriate use of artificial intelligence in study and assessment.
