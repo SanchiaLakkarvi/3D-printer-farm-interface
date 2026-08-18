@@ -1,4 +1,4 @@
-# 5.1 Executive Summary
+# 5.1 Summary
 
 The project aims to develop a web-based 3D printer farm management system for UWA students and staff. The current printer-by-printer process using Prusa Connect requires users to be managed at the individual printer level and does not provide the centralised access, queue management, validation and usage visibility required for a larger shared printer farm.
 
