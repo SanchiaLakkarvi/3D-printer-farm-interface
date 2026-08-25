@@ -501,7 +501,7 @@ This protects the guaranteed core workflow: sign in; upload and validate G-code;
 
 # 4. Risk and Technology Assessment
 
-This section evaluates the technology options for the 3D farm printer interface and identifies the risks associated with the proposed implementation. The evaluation is based on the Minimum Viable Product (MVP) agreed with the client and project team. The MVP includes:
+This section evaluates the technology options for the 3D farm printer interface and identifies the risks associated with the proposed implementations. This evaluation is based on the Minimum Viable Product (MVP) agreed with the client and project team. The MVP includes the following core features:
 
 1. User authentication
 2. User authorisation
@@ -511,63 +511,65 @@ This section evaluates the technology options for the 3D farm printer interface 
 
 ## 4.1 Technology Assessment
 
-### 4.1.1 Frontend
+### 4.1.1 Main Frontend Framework
 
 #### Technology Options
 
 | Option                   | Advantages                                                                                       | Disadvantages                     |
 | ------------------------ | ------------------------------------------------------------------------------------------------ | --------------------------------- |
-| **Next.js + TypeScript** | Strong React ecosystem, built-in routing, high developer productivity, easy deployment to Vercel | Higher learning curve             |
-| **React + JavaScript**   | Flexible, large community                                                                        | No compile-time type checking     |
+| **Next.js + TypeScript** | Strong React ecosystem, Built-in routing, High developer productivity, Easy deployment to Vercel | Higher learning curve             |
+| **React + JavaScript**   | Flexible, Large community                                                                        | No compile-time type checking     |
 | **Vue.js**               | Simple and lightweight                                                                           | Smaller ecosystem within the team |
 
-The team selected **Next.js + TypeScript** as the frontend stack. This option provides smooth integration with the Python FastAPI backend and reduces runtime errors through static typing.
+The team selected **Next.js + TypeScript** as the frontend stack for smooth integration with FastAPI and to reduce runtime errors through built-in static typing.
 
-### 4.1.2 Backend
+### 4.1.2 Main Backend Framework
 
 #### Technology Options
 
 | Option      | Advantages                                                | Disadvantages                  |
 | ----------- | --------------------------------------------------------- | ------------------------------ |
-| **FastAPI** | Async support, easy integration with validation libraries | Smaller ecosystem than Node.js |
-| **Node.js** | Large ecosystem, lightweight                              | More manual configuration      |
+| **FastAPI** | Async support, Easy integration with validation libraries | Smaller ecosystem than Node.js |
+| **Node.js** | Large ecosystem, Lightweight                              | More manual configuration      |
 | **Django**  | Strong admin features                                     | Overengineered for the MVP     |
 
-The system requires REST APIs for communication, G-code validation, queue processing, notification services, and PrusaConnect API integration. **FastAPI** aligns well with these requirements and with the team’s existing Python experience.
+The team selected **FastAPI** as the backend stack for smooth integration between REST APIs, Message broker, database system, and PrusaConnect Printer API. Moreover, the proposed technology aligns well with the team’s overall technical preference and experiences.
 
-### 4.1.3 Database and Queue
+### 4.1.3 Database and Message Queue Management
+
+#### Technology Options
 
 | Option         | Advantages                                                                             | Disadvantages                 |
 | -------------- | -------------------------------------------------------------------------------------- | ----------------------------- |
-| **PostgreSQL** | JSON support, open source, integrates well with FastAPI through SQLAlchemy or SQLModel | More administration           |
-| **MongoDB**    | Flexible schema                                                                        | Weaker relational consistency |
+| **PostgreSQL + RabbitMQ**  | JSON support, open source, supports asynchronous processing, reliable message delivery | More administration, requires management of two infrastructure components           |
+| **PostgreSQL** | Simpler architecture, fewer dependencies | Less suitable for asynchronous workflows, Tighter coupling between services           |
+| **MongoDB + RabbitMQ**  | Flexible schema, Asynchronous processing | Weaker relational consistency for entities such as users, roles, printers, print jobs |
 
-The team chose **PostgreSQL** because it provides reliable relational database management and integrates well with the proposed backend stack. Both **SQLModel** and **SQLAlchemy** remain viable options; SQLModel is designed by the creator of FastAPI, while SQLAlchemy is the industry-standard Python ORM.
+The combination of **PostgreSQL + RabbitMQ** was chosen because PostgreSQL provides reliable relational database system and integrates well with the proposed backend stack. Both **SQLModel** and **SQLAlchemy** are the viable options. The integration of RabbitMQ as the message broker allows asynchronous processing for printer jobs and status updates and communication between backend services. These published events are processed as notifications and an update of database.
 
 ### 4.1.4 Authentication and Authorisation
 
-UWA Single Sign-On was excluded from the MVP because the project is external to UWA. Authentication and authorisation will be implemented in FastAPI.
+UWA Single Sign-On is excluded from the methodology due to a demand of external development. Hence authentication and authorisation will be implemented in FastAPI. MVP does not include a centralised SSO server therefore private data such as passwords will be hashed using a secure password-hashing library such as **bcrypt** and Authenticated users will receive access tokens for their session. Authorisation will be enforced through **role-based access control (RBAC)** for administrators, students, and farmers.
 
-* Passwords will be hashed using a secure password-hashing library such as **bcrypt**.
-* Authenticated users will receive access tokens.
-* Authorisation will be enforced through **role-based access control (RBAC)** for administrators, students, and farmers.
+### 4.1.5 Payment Portal
 
-### 4.1.5 Payment Processing
+Real payment processing is strictly out of project scope. During development, **Stripe test/sandbox mode** will be used to simulate payments to avoid financial, legal, or compliance obligations. 
 
-Real payment processing is excluded from the MVP. During development, **Stripe test/sandbox mode** will be used to simulate payments without introducing financial, legal, or compliance obligations. The system must not store real card details.
+### 4.1.6 Printer API
 
-### 4.1.6 Printer Integration
+The system will use **PrusaConnect API** as the external interface between the appliation and printer infrastructure. It provides printer management, monitoring, and statistics allowing the system to interact with Prusa printers without low-level hardware printer network communication. The integration will be placed under FastAPI backend to prevent API credentials exposure. 
 
-The system will integrate with **PrusaConnect APIs** for printer selection, job submission, queue monitoring, and print-status updates. API limitations and availability are considered a significant project risk.
+### 4.1.8 Testing
 
-### 4.1.7 Testing
+The technology choices will be validated through several layers of testing including:
 
-Testing will include:
+1. Unit testing
+2. API integration testing
+3. PrusaConnect integration testing
+4. RabbitMQ integration testing
+5. End-to-end testing
 
-* Unit testing for backend services and validation logic
-* Integration testing for API endpoints and database operations
-* Frontend component and workflow testing
-* End-to-end testing for authentication, file upload, queue management, and printing workflows
+The tests will be conducted mainly through pytest + mock settings.
 
 ---
 
@@ -583,9 +585,11 @@ Testing will include:
 
 ## 4.3 Risk Assessment
 
+Below is a table of identified risks given a corresponding ID, likelihood, impact, score, and priority:
+
 | ID  | Risk                         | Likelihood (1–3) | Impact (1–3) | Score | Priority |
 | --- | ---------------------------- | ---------------- | ------------ | ----- | -------- |
-| R1  | PrusaConnect API limitations | 2                | 3            | 6     | High     |
+| R1  | PrusaConnect API limitations/Unavailability | 2                | 3            | 6     | High     |
 | R2  | G-code validation failures   | 2                | 3            | 6     | High     |
 | R3  | Queue concurrency bugs       | 2                | 3            | 6     | High     |
 | R4  | Hosting configuration issues | 2                | 2            | 4     | Medium   |
@@ -599,9 +603,13 @@ Testing will include:
 | R12 | Backup loss                  | 1                | 3            | 3     | Medium   |
 | R13 | Data integrity alteration    | 1                | 3            | 3     | Medium   |
 
+Where Queue concurrency bugs include RabbitMQ failure that may cause message loss, duplicate print jobs, and database inconsistency.
+
 ---
 
 ## 4.4 Risk Matrix
+
+Below is a risk management heatmap/matrix:
 
 | Severity          | Rare     | Unlikely | Possible               | Likely | Almost Certain |
 | ----------------- | -------- | -------- | ---------------------- | ------ | -------------- |
@@ -612,3 +620,116 @@ Testing will include:
 | **Insignificant** |          |          |                        |        |                |
 
 **Probability scale:** Rare → Unlikely → Possible → Likely → Almost Certain
+
+# 5.1 Summary
+
+The project aims to develop a web-based 3D printer farm management system for UWA students and staff. The current printer-by-printer process using Prusa Connect requires users to be managed at the individual printer level and does not provide the centralised access, queue management, validation and usage visibility required for a larger shared printer farm.
+
+The proposed system will provide a central management layer around the existing Prusa printer infrastructure. It will support role-based access, pre-sliced G-code upload and validation, compatible printer selection, queue management, job tracking, notifications and print collection. The system will support three roles: Student/Staff User, Printer Farmer/Operator and Administrator.
+
+The agreed MVP focuses on the complete print-job workflow: login, G-code upload,  compatible printer selection, validation, queue submission, printing, status monitoring, notification and collection. Basic usage information will also be recorded. Final pricing values and the staff billing model have not yet been confirmed and are therefore not treated as fixed MVP requirements. Online slicing, advanced queue optimisation, camera integration, real payment processing and automatic remaining-filament tracking are outside the core MVP.
+
+The project will use short Agile iterations supported by GitHub Projects, weekly team reviews and fortnightly client communication. The selected technology direction uses Next.js with TypeScript for the frontend, FastAPI for the backend and PostgreSQL for relational data management. A mock printer server and controlled physical-printer testing will support development where direct access to printers or printer interfaces is limited.
+
+Key project risks include limitations of available Prusa interfaces, G-code validation failures, queue concurrency issues, authentication and authorisation weaknesses, malicious file uploads and underestimated workload. These risks will be managed through early integration investigation, approved G-code configurations, testing, role-based access control, file validation, mock printer simulation and prioritisation of the agreed MVP.
+
+# 5.2 Research on Existing Projects and Resources
+
+## 5.2.1 UWA UniPrint
+
+UWA UniPrint provides a useful reference for a central university printing workflow, where users submit jobs through a shared service rather than interacting directly with individual printers (The University of Western Australia, n.d.). The proposed system applies this concept to 3D printing, where printer compatibility, material requirements and G-code configuration must also be considered.
+
+## 5.2.2 Prusa Connect
+
+Prusa Connect provides the existing web-connected environment for accessing and managing the UWA Prusa printers (Prusa Research, n.d.-a). However, UWA's current printer-by-printer process does not scale efficiently to a larger user group because users must be managed at the individual printer level and the current process does not provide the central printer-farm queue or university-level usage management required by the project.
+
+Rather than replacing the existing printer infrastructure, the proposed system will provide a university-specific management layer around it. This layer will support role-based user access, central queue management, G-code validation, job and usage tracking, notifications, collection management and reporting. Final pricing values and billing arrangements remain subject to client confirmation.
+
+## 5.2.3 Prusa Connect Printer SDK
+
+The Prusa Connect Printer SDK is an important resource for investigating communication between printers and the Prusa ecosystem (Prusa Research, n.d.-b). It provides a basis for understanding printer events, communication and possible integration methods.
+
+The SDK does not provide the complete university-level management functionality required by the project. The team will therefore investigate the SDK and available Prusa interfaces to determine how they can support the printer-integration layer, while implementing the required user, queue, validation and management functionality within the proposed system.
+
+## 5.2.4 PrusaSlicer
+
+PrusaSlicer converts 3D models into printer-ready G-code and provides printer and filament configuration profiles.
+
+For the MVP, users will upload pre-sliced G-code generated using an approved PrusaSlicer configuration. The system will validate relevant printer, material and configuration information before allowing a job to proceed. Information such as estimated print duration and filament usage may be extracted from the G-code for job and usage information rather than treated as validation conditions.
+
+This approach reduces the risk of incompatible files being submitted to physical printers while keeping the initial implementation manageable. Filament colour may be displayed to users but will not be used as a G-code validation condition because available colours may change.
+
+## 5.2.5 Research Conclusion
+
+The reviewed resources each support part of the proposed system but do not provide all of the university-specific management functionality required by the project.
+
+| Resource | Contribution to the Project |
+| --- | --- |
+| UWA UniPrint | Reference for a central university printing workflow |
+| Prusa Connect | Existing web-connected printer management environment |
+| Prusa Connect Printer SDK | Resource for investigating printer integration |
+| PrusaSlicer | Method for generating configured, printer-ready G-code |
+
+The proposed system will therefore use the existing Prusa infrastructure and available resources while adding the role-based access, queue management, G-code validation, job and usage tracking, notifications, collection management and reporting functions required for the UWA 3D printer farm.
+
+# 5.3 Other Project Resources
+
+## 5.3.1 Hardware
+
+The project will use the UWA-provided Orginal Prusa XL- 5T Input shaper 0.4 nozzel and Prusa CORE One HF0.4 nozzel printers. Access to physical printers will be controlled, so simulated printer behaviour will support development and testing when direct printer access is unavailable.
+
+The Buddy3D camera image is used only as a visual reference in the prototype (Prusa Research, n.d.-c). Live-camera integration is outside the core MVP and may be considered as a future extension.
+
+## 5.3.2 Software and Development Resources
+
+Key software and development resources include:
+
+- Next.js with TypeScript for frontend development;
+- FastAPI for backend development;
+- PostgreSQL for users, printers, jobs and usage data;
+- Prusa Connect and available printer interfaces;
+- Prusa Connect Printer SDK;
+- PrusaSlicer and approved printer/material profiles;
+- notification services;
+- a mock printer server for development and testing; and
+- GitHub for source control, issue tracking and project collaboration.
+
+The client has not prescribed a specific technology stack. The team has selected technologies based on the MVP requirements, team capability, integration needs and development constraints. The technology assessment and associated risks are detailed in Section 4.
+
+## 5.3.3 Client-Provided Resources
+
+The client will provide:
+
+- read-only Prusa Connect access;
+- a sample G-code file;
+- the approved PrusaSlicer configuration;
+- guidance on required validation settings; and
+- controlled access to physical printers for testing.
+
+Read-only Prusa Connect access will support investigation and monitoring. The availability and capabilities of interfaces required for job submission and other printer-control operations will be investigated during development.
+
+## 5.3.4 Testing Resources
+
+A mock printer server will be developed to simulate the behaviour of the physical Prusa printers during development. It will provide simulated printer states and responses, allowing normal workflows and failure conditions to be tested when direct access to physical printers is unavailable.
+
+Development testing will also use simplified G-code where appropriate. Controlled end-to-end testing with a physical printer will be performed near the end of development to validate the complete print-job workflow.
+
+# References
+
+Prusa Research. (n.d.-a). Prusa Connect and PrusaLink explained. Prusa Knowledge Base.
+https://help.prusa3d.com/article/prusa-connect-and-prusalink-explained_302608?product=prusa-connect
+
+Prusa Research. (n.d.-b). Prusa Connect SDK for Printer. GitHub.
+https://github.com/prusa3d/Prusa-Connect-SDK-Printer
+
+Prusa Research. (n.d.-c). Buddy3D camera printer view [Photograph]. Prusa Research.
+https://www.prusa3d.com/cdn-cgi/image/width=750,format=auto,quality=85/content/wysiwyg/fotky/snapshot-Buddy3D%20Camera-1732719528.jpg
+
+The University of Western Australia. (n.d.). UWA printing service.
+https://print.uwa.edu.au
+
+## AI-Use Acknowledgement
+
+OpenAI ChatGPT was used during the preparation of this report to provide ideas and suggestions relevant to the project. 
+
+The use of ChatGPT was undertaken in accordance with the University of Western Australia's guidance on the appropriate use of artificial intelligence in study and assessment.
