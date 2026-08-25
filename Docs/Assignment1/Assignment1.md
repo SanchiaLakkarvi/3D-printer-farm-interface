@@ -6,7 +6,7 @@ UWA Mechanical Engineering currently operates two web-connected 3D printers thro
 
 The current PrusaConnect-based process does not scale effectively to a larger number of users. Print jobs are submitted directly to individual printers, and users must be invited separately to each printer before they can access it. This approach is manageable for a small number of users but becomes impractical when supporting approximately 50–200 students in a semester. The current system also lacks account-level history and centralised usage tracking.
 
-The core problem is therefore the absence of a centralised and scalable web-based system for managing access to the printer farm, validating print jobs, assigning jobs to suitable printers, tracking print activity, and reducing the manual effort required to operate the service.
+The core problem is therefore the absence of a centralised and scalable web-based system for managing access to the printer farm, validating print jobs, assigning jobs to suitable printers, managing print queues, tracking print activity, and reducing the manual effort required to operate the service.
 
 Current-state workflow:
 
@@ -14,47 +14,51 @@ User → Individual invitation to a specific printer → Direct submission to th
 
 ## 1.2 Client Need and Project Value
 
-The client wants students and staff to access the printer farm through a common system rather than being manually added to individual printers. The initial project brief proposed access through a UWA identity, but the refined requirements allow a simpler login mechanism for the initial system. The key requirement is to provide convenient user access while minimising printer-level administration. The client described this objective as “minimal admin interaction.”
+The client wants students and staff to access the printer farm through a common system rather than being manually added to individual printers. The initial project brief proposed access through a UWA identity, but the refined requirements allow a simpler authentication mechanism for the initial system. The key requirement is to provide convenient user access with role-based access control while minimising printer-level administration. The client described this objective as “minimal admin interaction.”
 
 The system is also expected to improve visibility of printer-farm usage. The client requires tracking of material used per print, lifetime usage by students or staff, usage by unit code, and long-term statistics by printer and material. Cost accounting is also part of the project requirement, although the final pricing values and staff billing arrangements have not yet been confirmed.
 
 The primary users are students and staff who submit and track print jobs, Farmers who manage printers and completed jobs, and Administrators who require access to overall usage information and reports.
-By centralising these activities, the proposed system will reduce repetitive administration, improve visibility of printer usage, and provide a more scalable approach to managing a growing printer farm.
+By centralising these activities, the proposed system will reduce repetitive administration, improve visibility of printer usage, support organised queue and collection management, and provide a more scalable approach to managing a growing printer farm.
 
 ## 1.3 Proposed System
 
-The project will develop a web-based 3D Print Farm Management System that provides a central interface for submitting, validating, assigning, and tracking 3D printing jobs.
+The project will develop a web-based 3D Print Farm Management System that provides a central interface for authenticating users, validating print files, identifying compatible printers, submitting and queueing print jobs, tracking print status, supporting collection, and recording basic usage information.
 
 Proposed-state workflow:
 
-Login → Upload G-code → Select Printer/Material → Validate → Submit/Queue → Print → Notify
+Login → Upload G-code → Initial validation and metadata extraction → Display compatible printers → Select printer → Confirm compatibility → Submit → Queue → Print → Notify → Collect
 
-Users will upload a standard pre-sliced G-code file and either select a specific printer or request any printer with the required material. The uploaded file will be validated against the target printer’s locked configuration, including relevant machine settings such as material, bed size, and printer profile. Files that do not match the required configuration will be rejected or flagged before being sent to a printer.
+Users will upload a standard pre-sliced G-code file. The system will first perform initial validation and extract relevant metadata from the uploaded file before displaying compatible printers. The user will then select a printer, and the system will confirm compatibility against the target printer’s locked configuration, including relevant machine settings such as material, bed size, and printer profile. Files that do not match the required configuration will be rejected or flagged before being sent to a printer.
 
-The default queue approach will be first come, first served. Users will be able to view basic job status and will receive notifications when a print starts, completes, or stops because of an error. The system will also record relevant print and usage information to support long-term monitoring and reporting.
+The default queue approach will be first come, first served. Users will be able to view basic print-job tracking and basic job status and will receive notifications when a print starts, completes, or stops because of an error. After a print is completed, the Farmer will manage the collection workflow so that the completed print can be removed and the printer made available for the next job. The system will also record relevant print and usage information to support basic usage reporting and long-term monitoring.
 
 ## 1.4 Key MVP Deliverables
 
 The key MVP deliverables are:
 
-* A multi-level login system
+* Authentication and role-based access control
 * Upload of standard G-code print jobs
+* Initial G-code validation and metadata extraction
 * Validation of uploaded G-code against the target printer’s locked configuration
-* Assignment of jobs to an appropriate printer
-* Aasic print-job tracking and status information
+* Identification and display of compatible printers
+* Printer selection and compatibility confirmation
+* Print-job submission and queue management
+* Basic print-job tracking and status information
 * Notifications for job start, completion, and error/stopped states.
+* Farmer collection workflow for completed print jobs
+* Basic usage reporting
 
-The client confirmed that the minimum successful outcome for the semester is a system that supports multiple login levels, basic notifications, and the complete upload → validate → submit → notify workflow.
+The client confirmed that the minimum successful outcome for the semester is a system that supports authentication and role-based access control, G-code upload and validation, compatible printer selection, queue management, print-job tracking, basic notifications, and the Farmer collection workflow.
 
-Online slicing, camera integration, and automatic remaining-filament tracking were discussed as possible extensions but are not required for the core MVP. Detailed MVP functionality and evidence of client agreement are presented in Section 2: Client Communication and MVP Agreement.
+Online slicing, live-camera integration, automatic remaining-filament tracking, multi-material printing, and multi-colour printing are not required for the core MVP. Detailed MVP functionality and evidence of client agreement are presented in Section 2: Client Communication and MVP Agreement.
 
 ## 1.5 Scope and Major Constraints
 
 The project scope is focused on delivering the core workflow required to submit and manage 3D printing jobs using the existing web-connected printer environment. The initial system will primarily support standard pre-sliced G-code files and will treat each print job as a single-toolhead job. Multi-material and multi-colour printing are outside the core MVP.
 Uploaded G-code must be validated against the locked configuration of the selected printer. Relevant settings such as material, bed size, and printer profile will be checked, while filament colour will not be used as a validation condition because available colours may change.
 
-Physical printer testing is constrained during development. The client has requested that routine testing use simplified G-code containing only start and end operations, without actual extrusion. A full physical print test will be performed near project completion with the client present.
-Online slicing, camera integration, and automatic remaining-filament tracking are optional extensions rather than core MVP requirements. These features will only be considered if time permits after the core MVP functionality has been prioritised.
+Physical printer testing is constrained during development. The client has requested that routine testing use simplified G-code containing only start and end operations, without actual extrusion. A full physical print test will be performed near project completion with the client present. Online slicing, live-camera integration, automatic remaining-filament tracking, multi-material printing, and multi-colour printing are optional or future extensions rather than core MVP requirements.
 
 # Section 2: Client Communication and MVP Agreement
 
@@ -91,15 +95,7 @@ The client requested progress updates at least **fortnightly**. Meetings may be 
 
 ---
 
-### Project Documentation and Evidence
-
-**Microsoft Teams Area/Channel:**  
-
-**Meeting Notes Link:**  
-<https://uniwa.sharepoint.com/:b:/r/teams/CITS5206-InformationTechnologyCapstoneProjectSEM-22026-Group16/Shared%20Documents/3D%20Printer%20Farm%20Interface%20Client%20Meeting%20Notes.pdf?d=w90be0eb5874f49eda8602f4df0e46461&csf=1&web=1&e=0fid0E>
-
-**Github Repository Link:**
-<https://github.com/SanchiaLakkarvi/3D-printer-farm-interface>
+## 2.3 Summary of Initial Client Meeting
 
 The initial client requirements meeting was conducted on:
 
@@ -109,11 +105,8 @@ The initial client requirements meeting was conducted on:
 
 The meeting covered the project objectives, the limitations of the current system, the MVP scope, technical flexibility, communication expectations, and immediate action items.
 
----
 
-## 2.3 Summary of Initial Client Meeting
-
-During the initial client meeting, the team discussed the requirements for a university-wide 3D printer farm management platform.
+During the meeting, the team discussed the requirements for a university-wide 3D printer farm management platform.
 
 The client explained that managing printers through Prusa Connect is not suitable for the university environment because:
 
@@ -143,10 +136,10 @@ The client confirmed the following as the highest-priority requirements:
 8. Printer status tracking
 9. User and farmer notifications
 10. Farmer collection workflow
-11. Basic pricing and usage tracking
+11. Basic usage tracking and indicative cost information, subject to confirmation of the pricing model
 12. Administrator reporting
 
-These priorities form the core workflow for the first working version of the system.
+These priorities form the core workflow for the first working version of the system. The final pricing values and the staff billing model remain unconfirmed. Indicative cost information may therefore be displayed only after the client confirms the pricing model.
 
 ---
 
@@ -205,7 +198,7 @@ Administrators can:
 - Manage permissions
 - View all jobs
 - Generate reports
-- Monitor usage and costs
+- Monitor usage and indicative cost information, subject to confirmation of the pricing model
 
 
 ---
@@ -214,14 +207,20 @@ Administrators can:
 
 The MVP will allow users to upload standard G-code files generated by PrusaSlicer.
 
-The system will check the following information:
+The system will treat validation conditions separately from information extracted from the G-code.
 
-- Printer compatibility
-- Material type
-- Printer profile
-- Temperature settings
+**Validation conditions**
+
+- Printer/profile compatibility
+- Material compatibility
+- Build-volume or bed-size compatibility
+- Required configuration and safety settings
+
+**Information extracted or displayed**
+
 - Estimated printing duration
-- Filament usage
+- Estimated filament required
+- Other available G-code metadata
 
 The client agreed that approved slicer configurations can be used initially to simplify validation.
 
@@ -233,12 +232,9 @@ Users will be able to see:
 
 - Printer model
 - Current status
-- Material
-- Filament colour
-- Remaining filament estimate
+- Recorded material and filament colour
 - Queue length
 - Availability
-
 
 Initially, the queue will use a first-come, first-served approach.
 
@@ -246,33 +242,29 @@ Initially, the queue will use a first-come, first-served approach.
 
 ### 5. Printing Workflow
 
-The agreed MVP workflow is as follows:
+The agreed MVP workflow is the same as that presented in Section 1:
 
-1. User logs in.
-2. User uploads G-code.
-3. System validates the file.
-4. User selects a compatible printer.
-5. Job enters the queue.
-6. System sends the file to the printer.
-7. System monitors printing progress.
-8. Notifications are sent for important events.
-9. Farmer removes completed prints.
-10. User receives collection notification.
-
+1. The user logs in to the system.
+2. The user uploads a G-code file.
+3. The user selects a printer and material.
+4. The system validates the chosen settings and compatibility.
+5. The user submits the print job, which is added to the queue.
+6. The printer processes the print job.
+7. The system notifies the user when the job is complete.
 
 ---
 
 ## 2.6 Features Outside the MVP
 
-The following features were identified as non-essential for the initial MVP:
+The following features were identified as non-essential for the core MVP:
 
 | Feature | Reason |
 |---|---|
-| Web-based STL slicing | Additional complexity; users can initially upload pre-sliced G-code |
-| Advanced queue prioritisation | First-come-first-served is Decided initially |
-| Real-time camera streaming | Considered unnecessary for the core workflow, can be added at the later stage |
-| Full online payment integration | Prototype payment simulation is acceptable |
-| Highly accurate filament tracking | Estimates are acceptable initially |
+| Online slicing | Additional complexity; users will initially upload pre-sliced G-code |
+| Advanced queue optimisation | First-come, first-served is the agreed queue approach for the MVP |
+| Live-camera integration | Not required for the core workflow and can be considered later |
+| Automatic remaining-filament tracking | Recorded material and filament colour are sufficient for the MVP |
+| Real payment processing | Indicative cost information is acceptable until the pricing model is confirmed |
 
 The client identified these features as possible extensions once the core workflow is complete.
 
@@ -282,11 +274,12 @@ The client identified these features as possible extensions once the core workfl
 
 Possible future enhancements include:
 
-- Camera monitoring of printers
-- Automatic failed print detection
-- Live print images in notifications
+- Online slicing
 - Advanced queue optimisation
-- Automated payment provider integration
+- Live-camera integration
+- Automatic remaining-filament tracking
+- Real payment processing
+- Automatic failed print detection
 - Advanced analytics dashboards
 
 ---
@@ -627,3 +620,116 @@ Below is a risk management heatmap/matrix:
 | **Insignificant** |          |          |                        |        |                |
 
 **Probability scale:** Rare → Unlikely → Possible → Likely → Almost Certain
+
+# 5.1 Summary
+
+The project aims to develop a web-based 3D printer farm management system for UWA students and staff. The current printer-by-printer process using Prusa Connect requires users to be managed at the individual printer level and does not provide the centralised access, queue management, validation and usage visibility required for a larger shared printer farm.
+
+The proposed system will provide a central management layer around the existing Prusa printer infrastructure. It will support role-based access, pre-sliced G-code upload and validation, compatible printer selection, queue management, job tracking, notifications and print collection. The system will support three roles: Student/Staff User, Printer Farmer/Operator and Administrator.
+
+The agreed MVP focuses on the complete print-job workflow: login, G-code upload,  compatible printer selection, validation, queue submission, printing, status monitoring, notification and collection. Basic usage information will also be recorded. Final pricing values and the staff billing model have not yet been confirmed and are therefore not treated as fixed MVP requirements. Online slicing, advanced queue optimisation, camera integration, real payment processing and automatic remaining-filament tracking are outside the core MVP.
+
+The project will use short Agile iterations supported by GitHub Projects, weekly team reviews and fortnightly client communication. The selected technology direction uses Next.js with TypeScript for the frontend, FastAPI for the backend and PostgreSQL for relational data management. A mock printer server and controlled physical-printer testing will support development where direct access to printers or printer interfaces is limited.
+
+Key project risks include limitations of available Prusa interfaces, G-code validation failures, queue concurrency issues, authentication and authorisation weaknesses, malicious file uploads and underestimated workload. These risks will be managed through early integration investigation, approved G-code configurations, testing, role-based access control, file validation, mock printer simulation and prioritisation of the agreed MVP.
+
+# 5.2 Research on Existing Projects and Resources
+
+## 5.2.1 UWA UniPrint
+
+UWA UniPrint provides a useful reference for a central university printing workflow, where users submit jobs through a shared service rather than interacting directly with individual printers (The University of Western Australia, n.d.). The proposed system applies this concept to 3D printing, where printer compatibility, material requirements and G-code configuration must also be considered.
+
+## 5.2.2 Prusa Connect
+
+Prusa Connect provides the existing web-connected environment for accessing and managing the UWA Prusa printers (Prusa Research, n.d.-a). However, UWA's current printer-by-printer process does not scale efficiently to a larger user group because users must be managed at the individual printer level and the current process does not provide the central printer-farm queue or university-level usage management required by the project.
+
+Rather than replacing the existing printer infrastructure, the proposed system will provide a university-specific management layer around it. This layer will support role-based user access, central queue management, G-code validation, job and usage tracking, notifications, collection management and reporting. Final pricing values and billing arrangements remain subject to client confirmation.
+
+## 5.2.3 Prusa Connect Printer SDK
+
+The Prusa Connect Printer SDK is an important resource for investigating communication between printers and the Prusa ecosystem (Prusa Research, n.d.-b). It provides a basis for understanding printer events, communication and possible integration methods.
+
+The SDK does not provide the complete university-level management functionality required by the project. The team will therefore investigate the SDK and available Prusa interfaces to determine how they can support the printer-integration layer, while implementing the required user, queue, validation and management functionality within the proposed system.
+
+## 5.2.4 PrusaSlicer
+
+PrusaSlicer converts 3D models into printer-ready G-code and provides printer and filament configuration profiles.
+
+For the MVP, users will upload pre-sliced G-code generated using an approved PrusaSlicer configuration. The system will validate relevant printer, material and configuration information before allowing a job to proceed. Information such as estimated print duration and filament usage may be extracted from the G-code for job and usage information rather than treated as validation conditions.
+
+This approach reduces the risk of incompatible files being submitted to physical printers while keeping the initial implementation manageable. Filament colour may be displayed to users but will not be used as a G-code validation condition because available colours may change.
+
+## 5.2.5 Research Conclusion
+
+The reviewed resources each support part of the proposed system but do not provide all of the university-specific management functionality required by the project.
+
+| Resource | Contribution to the Project |
+| --- | --- |
+| UWA UniPrint | Reference for a central university printing workflow |
+| Prusa Connect | Existing web-connected printer management environment |
+| Prusa Connect Printer SDK | Resource for investigating printer integration |
+| PrusaSlicer | Method for generating configured, printer-ready G-code |
+
+The proposed system will therefore use the existing Prusa infrastructure and available resources while adding the role-based access, queue management, G-code validation, job and usage tracking, notifications, collection management and reporting functions required for the UWA 3D printer farm.
+
+# 5.3 Other Project Resources
+
+## 5.3.1 Hardware
+
+The project will use the UWA-provided Orginal Prusa XL- 5T Input shaper 0.4 nozzel and Prusa CORE One HF0.4 nozzel printers. Access to physical printers will be controlled, so simulated printer behaviour will support development and testing when direct printer access is unavailable.
+
+The Buddy3D camera image is used only as a visual reference in the prototype (Prusa Research, n.d.-c). Live-camera integration is outside the core MVP and may be considered as a future extension.
+
+## 5.3.2 Software and Development Resources
+
+Key software and development resources include:
+
+- Next.js with TypeScript for frontend development;
+- FastAPI for backend development;
+- PostgreSQL for users, printers, jobs and usage data;
+- Prusa Connect and available printer interfaces;
+- Prusa Connect Printer SDK;
+- PrusaSlicer and approved printer/material profiles;
+- notification services;
+- a mock printer server for development and testing; and
+- GitHub for source control, issue tracking and project collaboration.
+
+The client has not prescribed a specific technology stack. The team has selected technologies based on the MVP requirements, team capability, integration needs and development constraints. The technology assessment and associated risks are detailed in Section 4.
+
+## 5.3.3 Client-Provided Resources
+
+The client will provide:
+
+- read-only Prusa Connect access;
+- a sample G-code file;
+- the approved PrusaSlicer configuration;
+- guidance on required validation settings; and
+- controlled access to physical printers for testing.
+
+Read-only Prusa Connect access will support investigation and monitoring. The availability and capabilities of interfaces required for job submission and other printer-control operations will be investigated during development.
+
+## 5.3.4 Testing Resources
+
+A mock printer server will be developed to simulate the behaviour of the physical Prusa printers during development. It will provide simulated printer states and responses, allowing normal workflows and failure conditions to be tested when direct access to physical printers is unavailable.
+
+Development testing will also use simplified G-code where appropriate. Controlled end-to-end testing with a physical printer will be performed near the end of development to validate the complete print-job workflow.
+
+# References
+
+Prusa Research. (n.d.-a). Prusa Connect and PrusaLink explained. Prusa Knowledge Base.
+https://help.prusa3d.com/article/prusa-connect-and-prusalink-explained_302608?product=prusa-connect
+
+Prusa Research. (n.d.-b). Prusa Connect SDK for Printer. GitHub.
+https://github.com/prusa3d/Prusa-Connect-SDK-Printer
+
+Prusa Research. (n.d.-c). Buddy3D camera printer view [Photograph]. Prusa Research.
+https://www.prusa3d.com/cdn-cgi/image/width=750,format=auto,quality=85/content/wysiwyg/fotky/snapshot-Buddy3D%20Camera-1732719528.jpg
+
+The University of Western Australia. (n.d.). UWA printing service.
+https://print.uwa.edu.au
+
+## AI-Use Acknowledgement
+
+OpenAI ChatGPT was used during the preparation of this report to provide ideas and suggestions relevant to the project. 
+
+The use of ChatGPT was undertaken in accordance with the University of Western Australia's guidance on the appropriate use of artificial intelligence in study and assessment.
