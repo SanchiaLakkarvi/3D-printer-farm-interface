@@ -6,9 +6,17 @@ from sqlalchemy import engine_from_config, pool
 from app.core.config import settings
 from app.db.base import Base
 
-# Import all models here so Alembic can detect them for autogenerate.
-# Example (uncomment as models are added):
-# from app.models import user, printer, gcode_file, print_job, notification, audit_log
+# Import all models so Base.metadata includes every table for autogenerate.
+from app.models import (  # noqa: F401
+    CollectionRecord,
+    JobValidation,
+    MaintenanceLog,
+    Material,
+    Notification,
+    PrintJob,
+    Printer,
+    User,
+)
 
 config = context.config
 
