@@ -148,22 +148,6 @@ If neither printer matches:
 python gcode_validator.py <gcode-file>
 ```
 
-## FastAPI endpoint
-
-Install and run:
-
-```bash
-pip install -r requirements.txt
-uvicorn app_example:app --reload
-```
-
-Endpoint:
-
-```text
-POST /api/gcode/validate
-multipart/form-data: file=<uploaded G-code file>
-```
-
 ## Run tests
 
 ```bash
