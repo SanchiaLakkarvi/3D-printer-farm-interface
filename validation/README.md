@@ -1,9 +1,10 @@
-# Two-printer G-code validator
+# G-code validation for two supported Prusa printers
 
-This implementation follows exactly this order:
+This package implements the approved validation flow for **one uploaded G-code file**.
+The same uploaded file is checked against **both supported printer profiles together**.
 
 ```text
-Upload file
+Upload G-code file
     |
     v
 1. FILE FORMAT VALIDATION
@@ -11,29 +12,31 @@ Upload file
     +-- INVALID --> FAIL immediately
     |
     v
-2. Parse G-code / BGCODE
+2. Parse G-code + integrity check
     |
     +-- Cannot parse / corrupted --> FAIL
     |
     v
-3. Read bottom/metadata information
+3. Read bottom / printer metadata
     |
     v
-4. Check the SAME file against BOTH printers
+4. Check the SAME G-code against BOTH printers
     |
-    +--> Prusa CORE One HF0.4
+    +--> Prusa CORE One HF0.4 nozzle
     |
-    +--> Original Prusa XL - 5T Input Shaper 0.4
+    +--> Original Prusa XL - 5T Input Shaper 0.4 nozzle
     |
     v
-5. Exactly one matches?
+5. Does one supported printer match?
    YES --> PASS --> SELECT_PRINTER
    NO  --> FAIL --> UPLOAD_GCODE / re-slice
 ```
 
-## Supported printer checks
+## Supported printer profiles
 
 ### Prusa CORE One HF0.4 nozzle
+
+Compatibility fields:
 
 - `printer_model = COREONE`
 - `printer_variant = HF0.4`
@@ -42,85 +45,112 @@ Upload file
 
 ### Original Prusa XL - 5T Input Shaper 0.4 nozzle
 
+Compatibility fields:
+
 - `printer_model = XL5IS`
 - `printer_variant = 0.4`
 - `nozzle_diameter = 0.4,0.4,0.4,0.4,0.4`
 
-No filament, temperature, layer-height, infill, or other rejection rules are invented here.
-Those fields may be displayed, but they are not compatibility gates unless you add a real project requirement for them.
+No extra rejection rules for filament, temperatures, layer height, infill, or supports are added.
+Those values can be displayed, but they are not compatibility gates unless your project requirements define them later.
 
-## Stage 1 - file format
+## Stage 1 — validate G-code file format
 
-The validator accepts only `.gcode` and `.bgcode`.
+The validator does not trust the filename alone.
+It checks the actual file content first.
 
-- `.bgcode`: content must start with Prusa BGCODE `GCDE` magic bytes.
-- `.gcode`: content must be UTF-8 text, not contain NUL/binary data, and contain a recognizable `G...`, `M...`, or `T...` command.
-- An extension/content mismatch is rejected.
+- Text G-code must be readable text and contain recognizable `G...`, `M...`, or `T...` commands.
+- The supplied Prusa sample uses a binary representation of G-code, so its actual binary header is checked before parsing.
+- A JPG, PDF, random text file, or other invalid content renamed to a G-code filename will fail here.
 
-This means renaming an image/PDF/text file to `.gcode` or `.bgcode` does not bypass validation.
-
-## Stage 2 - parse/integrity
-
-For `.bgcode`, the implementation parses its block structure and checks CRC32 when present.
-For `.gcode`, it verifies there are executable G/M/T commands and parses Prusa-style comment metadata.
-
-## Stage 3 - metadata
-
-Required compatibility metadata:
-
-- `printer_model`
-- `printer_variant`
-- `nozzle_diameter`
-
-CORE One HF0.4 additionally requires `nozzle_high_flow = 1` when comparing that profile.
-
-For text `.gcode`, metadata is processed in file order. If a key appears again near the bottom, the bottom value wins.
-
-## Stage 4 - BOTH printer checks
-
-The response always contains both checks after stages 1-3 pass:
+Public API results always report the file format as:
 
 ```json
 {
-  "printer_checks": {
-    "core_one_hf04": {"result": "MATCH or NO_MATCH"},
-    "xl_5t_is_04": {"result": "MATCH or NO_MATCH"}
-  }
+  "format": "GCODE"
 }
 ```
 
-## Stage 5 - workflow decision
+## Stage 2 — parse and integrity check
 
-PASS:
+The validator parses the G-code according to how it is stored.
+For the supplied Prusa sample, block boundaries and CRC32 checksums are verified.
+For text G-code, executable commands and metadata comments are parsed.
 
-```json
-{
-  "status": "PASS",
-  "next_step": "SELECT_PRINTER"
-}
-```
-
-The frontend should display/filter only physical printers belonging to `compatible_profile`.
-Validation does **not** queue or start a print.
-
-FAIL:
+If parsing fails or the file is corrupted:
 
 ```json
 {
   "status": "FAIL",
+  "failed_stage": 2,
+  "message": "G-code could not be parsed or failed integrity validation.",
   "next_step": "UPLOAD_GCODE"
 }
 ```
 
-Show `message`, `errors`, `failed_stage`, and (when stage 4 ran) the two `printer_checks` to the user.
+## Stage 3 — read metadata
+
+The validator reads the printer metadata needed for compatibility:
+
+- `printer_model`
+- `printer_variant`
+- `nozzle_diameter`
+- `nozzle_high_flow` when required by the CORE One HF0.4 profile
+
+For text G-code, metadata is processed in file order, so a repeated value near the bottom overrides an earlier value.
+
+## Stage 4 — compare against both printers
+
+After stages 1–3 pass, the validator **always checks both profiles**:
+
+```json
+{
+  "printer_checks": {
+    "core_one_hf04": {
+      "result": "MATCH or NO_MATCH"
+    },
+    "xl_5t_is_04": {
+      "result": "MATCH or NO_MATCH"
+    }
+  }
+}
+```
+
+## Stage 5 — workflow decision
+
+If one supported printer matches:
+
+```json
+{
+  "status": "PASS",
+  "format": "GCODE",
+  "next_step": "SELECT_PRINTER"
+}
+```
+
+The frontend should show/filter only physical printers belonging to the matched profile.
+Validation does **not** queue or start the print.
+
+If neither printer matches:
+
+```json
+{
+  "status": "FAIL",
+  "failed_stage": 5,
+  "message": "G-code is valid, but it is not compatible with either supported printer.",
+  "next_step": "UPLOAD_GCODE"
+}
+```
 
 ## Run from command line
 
 ```bash
-python gcode_validator.py your_file.bgcode
+python gcode_validator.py <gcode-file>
 ```
 
-## FastAPI
+## FastAPI endpoint
+
+Install and run:
 
 ```bash
 pip install -r requirements.txt
@@ -131,19 +161,22 @@ Endpoint:
 
 ```text
 POST /api/gcode/validate
-multipart/form-data: file=<uploaded file>
+multipart/form-data: file=<uploaded G-code file>
 ```
 
-## Tests
+## Run tests
 
 ```bash
 pytest -q
 ```
 
-The tests include the uploaded CORE One sample, bad format, extension/content mismatch, corrupted BGCODE, text CORE One, text XL 5T, missing metadata, and a valid file that matches neither printer.
+The tests cover:
 
-## Verification basis
-
-- Prusa `libbgcode` defines binary G-code as a block format with metadata/G-code blocks and checksum support.
-- The included real uploaded sample is used to test the CORE One path.
-- The XL test is a metadata fixture for the explicit XL profile check; it is not represented as a real uploaded XL BGCODE sample.
+- the real uploaded CORE One sample;
+- CORE One matching and XL non-matching for that same file;
+- an XL 5T fixture matching XL and not CORE One;
+- wrong file format;
+- filename/content mismatch;
+- corrupted G-code;
+- missing printer metadata;
+- valid G-code that matches neither supported printer.
