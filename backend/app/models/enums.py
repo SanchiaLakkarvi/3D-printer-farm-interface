@@ -8,7 +8,7 @@ from sqlalchemy import Enum as SAEnum
 
 
 class UserRole(str, enum.Enum):
-    STUDENT_STAFF = "student_staff"
+    STUDENT = "student"
     FARMER = "farmer"
     ADMIN = "admin"
 

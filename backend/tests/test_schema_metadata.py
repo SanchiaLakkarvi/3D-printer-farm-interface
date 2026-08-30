@@ -1,8 +1,10 @@
 """Metadata contract tests for SQLAlchemy models vs agreed live schema.
 
 These tests inspect Base.metadata only — no database connection.
-Models reflect Alembic head (after 0003): ``department`` (not ``unit_code``);
-no ``queue_position``; Phase B indexes present.
+Models reflect Alembic head (after 0004): auth-profile shape with Role
+``student``, ``first_name``/``last_name``, nullable ``student_number``, no
+``auth_hash``; ``department`` (not ``unit_code``); no ``queue_position``;
+Phase B indexes present.
 """
 
 from __future__ import annotations
@@ -69,8 +71,18 @@ def test_users_email_unique_and_department_nullable() -> None:
     users = _table("users")
     assert "users_email_key" in _unique_constraint_names("users")
     assert users.c.department.nullable is True
-    assert users.c.auth_hash.nullable is False
     assert users.c.email.nullable is False
+    assert "auth_hash" not in users.c
+
+
+def test_users_auth_profile_shape() -> None:
+    """Agreed Supabase Auth profile: split names, nullable student_number."""
+    users = _table("users")
+    assert "name" not in users.c
+    assert "student_staff_number" not in users.c
+    assert users.c.first_name.nullable is False
+    assert users.c.last_name.nullable is False
+    assert users.c.student_number.nullable is True
 
 
 def test_print_jobs_nullability_and_no_queue_position() -> None:
@@ -105,7 +117,7 @@ def test_collection_timestamp_columns_nullable() -> None:
 
 
 def test_enum_names_and_values() -> None:
-    assert {m.value for m in UserRole} == {"student_staff", "farmer", "admin"}
+    assert {m.value for m in UserRole} == {"student", "farmer", "admin"}
     assert {m.value for m in PrinterStatus} == {
         "idle",
         "printing",
@@ -188,11 +200,19 @@ def test_baseline_revision_still_creates_queue_position() -> None:
     baseline = (VERSIONS_DIR / "0001_baseline_existing_schema.py").read_text()
     followup = (VERSIONS_DIR / "0002_queue_indexes_drop_queue_position.py").read_text()
     rename = (VERSIONS_DIR / "0003_rename_unit_code_to_department.py").read_text()
+    auth_profile = (
+        VERSIONS_DIR / "0004_users_auth_profile_supabase_model.py"
+    ).read_text()
     assert 'sa.Column("queue_position", sa.Integer(), nullable=True)' in baseline
     assert 'sa.Column("department", sa.Text(), nullable=True)' in baseline
     assert 'op.drop_column("print_jobs", "queue_position")' in followup
     assert 'revision: str = "0001_baseline_existing_schema"' in baseline
     assert 'revision: str = "0002_queue_indexes_drop_queue_position"' in followup
     assert 'revision: str = "0003_rename_unit_code_to_department"' in rename
+    assert 'revision: str = "0004_users_auth_profile_supabase_model"' in auth_profile
     assert 'down_revision' in followup and "0001_baseline_existing_schema" in followup
     assert "0002_queue_indexes_drop_queue_position" in rename
+    assert "0003_rename_unit_code_to_department" in auth_profile
+    assert "RENAME VALUE" in auth_profile or "student_staff" in auth_profile
+    assert "first_name" in auth_profile and "student_number" in auth_profile
+    assert "auth_hash" in auth_profile

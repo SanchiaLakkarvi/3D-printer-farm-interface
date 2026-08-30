@@ -30,14 +30,16 @@ PRINT_JOBS ||--o| COLLECTION_RECORDS : has
 
 | Column | Type | Notes |
 |---|---|---|
-| `id` | `uuid` PK | |
+| `id` | `uuid` PK | Same UUID as Supabase Auth user id |
 | `email` | `string`, unique | Login identifier |
-| `name` | `string` | |
-| `student_staff_number` | `string` | |
-| `role` | `enum` | `student_staff`, `farmer`, `admin` |
+| `first_name` | `string` | |
+| `last_name` | `string` | |
+| `student_number` | `string`, nullable | Required for Role `student` (derived from Student Email); null for Farmer/Admin |
+| `role` | `enum` | `student`, `farmer`, `admin` |
 | `department` | `string`, nullable | User's department for admin cost/usage reporting, e.g. `engineering`, `IT`, `mechanical`. Nullable since farmers/admins (and some staff) may not belong to a single department |
-| `auth_hash` | `string` | Password hash (bcrypt) or passwordless token reference |
 | `created_at` | `timestamp` | |
+
+Credentials and sessions live in Supabase Auth; this table does not store password hashes.
 
 ### `printers`
 
@@ -131,7 +133,8 @@ PRINT_JOBS ||--o| COLLECTION_RECORDS : has
 **Core entity choices**
 - `users.department` is nullable rather than a separate `departments` table — admins need cost/usage reporting *by* department (e.g. engineering, IT, mechanical), not a full department-management system. A plain nullable string column is enough to filter/group reports. It's nullable because farmers and admins, and possibly some staff, aren't tied to a single department.
 - `print_jobs.department` is kept as well, since a student may print for a different department than the one on their profile. In practice the job-level field can default to `users.department` at submission time but remain overridable per job — this keeps per-job reporting accurate even if a user's profile department changes later or a job doesn't match their default.
-- `users.role` is a single enum (`student_staff`, `farmer`, `admin`) rather than a separate roles/permissions table — the MVP only needs three fixed roles, so RBAC logic can live in FastAPI dependency checks rather than a join table. This can be migrated to a full roles/permissions join table later if finer-grained access control is needed.
+- `users.role` is a single enum (`student`, `farmer`, `admin`) rather than a separate roles/permissions table — the MVP only needs three fixed roles, so RBAC logic can live in FastAPI dependency checks rather than a join table. This can be migrated to a full roles/permissions join table later if finer-grained access control is needed. Higher Roles retain lower capabilities on the same profile (Admin ⊃ Farmer ⊃ submit).
+- `users.student_number` is nullable so Farmers and Admins are not forced to invent a student id; Students get the value derived from the Student Email local-part at Sign-up.
 - `printers.locked_profile` is a `jsonb` column holding the compatibility config (material, bed size, printer profile). Postgres's native JSON support (a reason the team selected it in Section 4.1.3) allows this to be stored and queried without a rigid separate table per config field.
 - `materials` is its own table rather than a string on `printers`/`print_jobs` because lifetime and per-material usage stats are required (Section 1.2) — usage is aggregated from `print_jobs` grouped by `material_id`.
 
