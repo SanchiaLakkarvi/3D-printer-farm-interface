@@ -1,1 +1,1 @@
-"""API v1 endpoints."""
+"""Versioned API route modules."""
