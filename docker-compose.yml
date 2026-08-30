@@ -1,0 +1,18 @@
+# FastAPI backend using credentials from backend/.env (Supabase Postgres + Auth).
+# Do not commit backend/.env — it contains secrets.
+services:
+  api:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      # Container-local upload path (overrides host-relative ./storage from .env)
+      FILE_STORAGE_ROOT: ./storage
+      # Never auto-migrate a shared Supabase DB on boot. Set to 1 only for a
+      # disposable/fresh database you intentionally want upgraded.
+      RUN_MIGRATIONS: "0"
+    volumes:
+      - ./backend/storage:/app/storage
