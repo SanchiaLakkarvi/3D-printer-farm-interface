@@ -7,3 +7,5 @@ storage/*
 .env
 AGENTS.md
 skills-lock.json
+Explanation/
+.agents/

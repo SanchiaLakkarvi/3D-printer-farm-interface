@@ -2,7 +2,88 @@
 
 A web-based 3D printer farm management system designed to provide a central interface for managing users, print jobs, queues, and multiple Prusa 3D printers.
 
-> **Project status:** Pre-development / Requirements & Planning
+> **Project status:** Backend MVP in progress (FastAPI + Supabase). No frontend yet — use the API docs UI to exercise Auth/RBAC.
+
+---
+
+## Getting started (local)
+
+The implemented application lives in `backend/`. Docker is the preferred way to run it against the team Supabase project.
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (running)
+- Access to the team Supabase project (URL, anon key, service-role key, DB password)
+
+### 1. Configure environment
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+Edit `backend/.env` (never commit this file):
+
+| Variable | Notes |
+|---|---|
+| `DATABASE_URL` | Prefer the Supabase **Session pooler** URI (IPv4). Prefix with `postgresql+psycopg://`. Direct `db.*.supabase.co` is IPv6-only and often fails inside Docker Desktop on macOS. Pooler username is `postgres.<project-ref>`. |
+| `AUTH_ADAPTER` | `supabase` for real Auth |
+| `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` | Server-only; from Supabase project settings |
+| `SEED_*_PASSWORD` | Distinct non-empty passwords for demo Admin + Farmers |
+
+Full variable list and Auth details: [`backend/README.md`](backend/README.md).
+
+### 2. Start the API
+
+From the **repository root**:
+
+```bash
+docker compose up --build
+```
+
+Detached:
+
+```bash
+docker compose up --build -d
+```
+
+Compose loads `backend/.env` and starts the FastAPI container on port 8000. Postgres and Auth come from Supabase (no local database container). Migrations are **not** applied on boot against the shared DB.
+
+### 3. Open the API
+
+| URL | Purpose |
+|---|---|
+| http://localhost:8000/health | Health check |
+| http://localhost:8000/docs | Swagger UI (try endpoints) |
+| http://localhost:8000/redoc | ReDoc |
+
+There is no app UI at `/` — that path returns 404 by design.
+
+### 4. Seed demo Admin + Farmers (once)
+
+After passwords are set in `backend/.env`:
+
+```bash
+docker compose exec api python -m app.scripts.seed_users
+```
+
+Creates Supabase Auth users and matching `users` profile rows (shared UUID). Re-running fails with conflict if those emails already exist.
+
+| Role | Default email |
+|---|---|
+| Admin | `christopher.lamb@uwa.edu.au` |
+| Farmers | `farmer1@uwa.edu.au` … `farmer3@uwa.edu.au` |
+
+Sign in via `POST /api/auth/signin` in `/docs`, then **Authorize** with `Bearer <access_token>`.
+
+### 5. Stop
+
+```bash
+docker compose down
+```
+
+### Without Docker
+
+See [`backend/README.md`](backend/README.md) for venv, `uvicorn`, Alembic, tests, and Auth endpoint reference.
 
 ---
 
@@ -621,19 +702,21 @@ Collection Notification
 - Main printer workflow identified
 - Initial reporting requirements identified
 - Prusa integration identified as a core technical area
+- Backend foundation: FastAPI, Docker Compose, Supabase Postgres + Auth
+- Email/password Auth with Student Sign-up, Sign-in, `/me`, and RBAC probes
+- Seed Users tooling for demo Admin + Farmers
 
-### Not Yet Finalised
+### Not Yet Finalised / not built
 
-- Final technology stack
+- Frontend (Next.js planned; not in repo yet)
 - Exact Prusa API/SDK integration approach
 - Exact G-code validation rules
 - Pricing values
 - Cancellation/refund policy
 - Approval thresholds
 - Payment implementation
-- Final queue rules
-- Authentication integration
-- Deployment/hosting environment
+- Final queue rules beyond the agreed FCFS design
+- Deployment/hosting environment beyond local Docker + Supabase
 
 ---
 
@@ -661,24 +744,17 @@ Before significant development begins, the team should:
 
 ## 22. Project Documentation
 
-This README is intended to provide the team with a shared understanding of the project **before development begins**.
+This README covers product requirements and how to run the current backend locally.
 
-Detailed technical documentation will be maintained separately as the project progresses.
+Technical references:
 
-This may include:
+- Backend setup, Auth endpoints, migrations, tests: [`backend/README.md`](backend/README.md)
+- Database schema notes: [`Docs/Guides/database_schema.md`](Docs/Guides/database_schema.md)
+- Auth specification: [`Docs/specs/authentication.md`](Docs/specs/authentication.md)
+- Agreed MVP / Assignment 1: [`Docs/Assignment1/Assignment1.md`](Docs/Assignment1/Assignment1.md)
+- Client decisions: `Meeting Minutes/`
 
-- Software Architecture Document
-- System architecture diagrams
-- Database ERD
-- API documentation
-- G-code validation specification
-- Prusa integration documentation
-- Event/message definitions
-- UI/UX designs
-- Testing documentation
-- Deployment documentation
-
-Technology and architecture decisions should be documented after the team has completed the relevant investigation rather than being treated as fixed decisions in this initial README.
+Additional documentation may include architecture diagrams, G-code validation specs, Prusa integration notes, UI designs, and deployment guides as those areas are implemented.
 
 ---
 
