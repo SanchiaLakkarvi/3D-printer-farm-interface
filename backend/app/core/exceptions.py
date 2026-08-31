@@ -43,3 +43,21 @@ class ConflictError(AppError):
             code="CONFLICT",
             message=message,
         )
+
+
+class UnauthorizedError(AppError):
+    def __init__(self, message: str = "Not authenticated") -> None:
+        super().__init__(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            code="UNAUTHORIZED",
+            message=message,
+        )
+
+
+class BadRequestError(AppError):
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code=code,
+            message=message,
+        )

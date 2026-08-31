@@ -62,7 +62,33 @@ def test_alembic_upgrade_head_on_empty_database() -> None:
         } <= tables
 
         version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        assert version == "0003_rename_unit_code_to_department"
+        assert version == "0004_users_auth_profile_supabase_model"
+
+        user_cols = {
+            row[0]
+            for row in conn.execute(
+                text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema = 'public' AND table_name = 'users'"
+                )
+            )
+        }
+        assert {"first_name", "last_name", "student_number"} <= user_cols
+        assert "auth_hash" not in user_cols
+        assert "name" not in user_cols
+        assert "student_staff_number" not in user_cols
+
+        role_labels = {
+            row[0]
+            for row in conn.execute(
+                text(
+                    "SELECT e.enumlabel FROM pg_enum e "
+                    "JOIN pg_type t ON e.enumtypid = t.oid "
+                    "WHERE t.typname = 'user_role'"
+                )
+            )
+        }
+        assert role_labels == {"student", "farmer", "admin"}
 
         cols = {
             row[0]

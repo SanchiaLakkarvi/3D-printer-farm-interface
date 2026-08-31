@@ -17,6 +17,6 @@ def test_openapi_docs_accessible(client: TestClient) -> None:
 
 
 def test_unknown_route_returns_404(client: TestClient) -> None:
-    response = client.get("/api/v1/nonexistent")
+    response = client.get("/api/nonexistent")
 
     assert response.status_code == 404
