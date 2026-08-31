@@ -104,6 +104,26 @@ stop with `docker compose down`.
 | `GET`/`POST` | `/api/rbac/admin` | Bearer + Admin | probe; Farmer/Student `403`; POST body `role` ignored |
 | `GET` | `/api/rbac/submit` | Bearer + submit | probe; Student/Farmer/Admin OK (hierarchy) |
 
+## Material and Printer endpoints
+
+| Method | Path | Auth | Behaviour |
+|---|---|---|---|
+| `GET` | `/api/materials` | Bearer | List all materials |
+| `POST` | `/api/materials` | Bearer + Admin | Create a new material (`name`, `type`, `colour`) |
+| `GET` | `/api/printers` | Bearer | List all printers with nested `current_material` |
+| `GET` | `/api/printers/{id}` | Bearer | Get a single printer by ID |
+| `POST` | `/api/printers` | Bearer + Admin | Create a new printer |
+| `PATCH` | `/api/printers/{id}` | Bearer + Admin | Update status, material, location, or locked_profile |
+
+### Seed Printers & Materials (demo hardware)
+
+To populate local/staging databases with demo UWA printers (Prusa CORE One, Prusa XL) and materials (PLA, PETG):
+
+```bash
+cd backend && source .venv/bin/activate
+python -m app.scripts.seed_printers
+```
+
 **Sign-out:** access tokens are provider JWTs (or fake tokens in tests). The API does not keep a server-side session list, so Sign-out is **client-side**: discard the stored `access_token`. Call `POST /signout` for a uniform API boundary; revoke/refresh-token logout can be added later if needed. Missing, invalid, or expired Bearer tokens on protected routes return `401`.
 
 **RBAC:** Role always comes from the application profile after token validation. Client-supplied `role` query/body fields are ignored and cannot escalate privileges. Capability hierarchy: Admin ⊃ Farmer ⊃ submit. Use `require_farmer` / `require_admin` / `require_submitter` (or `require_roles(...)`) on real endpoints; the `/rbac/*` probes exist so authorization can be tested before other farm features land.
