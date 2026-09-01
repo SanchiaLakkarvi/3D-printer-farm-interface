@@ -94,6 +94,18 @@ or enforce explicit server-side membership or allowlist checks.
 Use SIWC for account pages, user-specific dashboards, saved records, and write
 actions tied to the current ChatGPT user. Leave public content anonymous.
 
+## Backend API (auth wiring)
+
+Copy `.env.example` to `.env.local` (or `.env`) and set:
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+```
+
+This is the FastAPI origin the browser auth client calls (`/api/auth/signup`, and later sign-in/me/signout). Use the same value in local and deployed frontends, pointing at the matching backend. Backend CORS should allow the frontend origin (`http://localhost:5173` for Vite `npm run dev`, or `http://localhost:3000` for Next).
+
+Student Sign-up is wired against this base URL; do not put secrets in `NEXT_PUBLIC_*` variables.
+
 ## Docker Compose (full stack)
 
 From the repo root, `docker compose up --build` starts the API (port 8000) and
