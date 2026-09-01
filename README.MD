@@ -58,24 +58,7 @@ Compose loads `backend/.env` and starts the FastAPI container on port 8000. Post
 
 There is no app UI at `/` — that path returns 404 by design.
 
-### 4. Seed demo Admin + Farmers (once)
-
-After passwords are set in `backend/.env`:
-
-```bash
-docker compose exec api python -m app.scripts.seed_users
-```
-
-Creates Supabase Auth users and matching `users` profile rows (shared UUID). Re-running fails with conflict if those emails already exist.
-
-| Role | Default email |
-|---|---|
-| Admin | `christopher.lamb@uwa.edu.au` |
-| Farmers | `farmer1@uwa.edu.au` … `farmer3@uwa.edu.au` |
-
-Sign in via `POST /api/auth/signin` in `/docs`, then **Authorize** with `Bearer <access_token>`.
-
-### 5. Stop
+### 4. Stop
 
 ```bash
 docker compose down
@@ -704,7 +687,6 @@ Collection Notification
 - Prusa integration identified as a core technical area
 - Backend foundation: FastAPI, Docker Compose, Supabase Postgres + Auth
 - Email/password Auth with Student Sign-up, Sign-in, `/me`, and RBAC probes
-- Seed Users tooling for demo Admin + Farmers
 
 ### Not Yet Finalised / not built
 
