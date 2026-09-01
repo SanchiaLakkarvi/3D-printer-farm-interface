@@ -34,7 +34,7 @@ Key settings:
 | `SUPABASE_ANON_KEY` | Supabase anon key (server-only; used for Sign-in/token checks) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key (server-only; never expose to the browser) |
 | `JWT_SECRET_KEY` | Legacy placeholder; sessions come from Supabase Auth when `AUTH_ADAPTER=supabase` |
-| `CORS_ORIGINS` | Allowed frontend origins |
+| `CORS_ORIGINS` | Allowed frontend origins (comma-separated; local Vite uses `http://localhost:5173`) |
 | `MOCK_PRINTER_BASE_URL` | URL of the mock printer server |
 
 ### Demo Admin + Farmers
@@ -63,13 +63,14 @@ The API docs are available at [http://localhost:8000/docs](http://localhost:8000
 docker compose up --build
 ```
 
-Compose loads `backend/.env` and starts only the API (Postgres/Auth come from
-Supabase). Migrations do **not** run on boot against the shared DB; set
-`RUN_MIGRATIONS=1` only for a disposable database you intentionally want
-upgraded.
+Compose loads `backend/.env` and starts the API (port 8000) plus the frontend
+`web` service (port 5173). Postgres/Auth come from Supabase. Migrations do
+**not** run on boot against the shared DB; set `RUN_MIGRATIONS=1` only for a
+disposable database you intentionally want upgraded.
 
-Useful URLs once the API is up:
+Useful URLs once up:
 
+- UI: http://localhost:5173
 - Health: http://localhost:8000/health
 - Interactive docs (try endpoints): http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc

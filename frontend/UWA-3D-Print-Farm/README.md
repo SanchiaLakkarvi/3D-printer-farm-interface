@@ -94,6 +94,13 @@ or enforce explicit server-side membership or allowlist checks.
 Use SIWC for account pages, user-specific dashboards, saved records, and write
 actions tied to the current ChatGPT user. Leave public content anonymous.
 
+## Docker Compose (full stack)
+
+From the repo root, `docker compose up --build` starts the API (port 8000) and
+this UI (port 5173) with `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`. See
+[`Dockerfile`](./Dockerfile) and the root
+[`docker-compose.yml`](../../docker-compose.yml).
+
 ## Diagnostic Commands
 
 - `npm run install:ci`: perform the one bounded lockfile install

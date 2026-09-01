@@ -2,13 +2,13 @@
 
 A web-based 3D printer farm management system designed to provide a central interface for managing users, print jobs, queues, and multiple Prusa 3D printers.
 
-> **Project status:** Backend MVP in progress (FastAPI + Supabase). No frontend yet — use the API docs UI to exercise Auth/RBAC.
+> **Project status:** Backend MVP in progress (FastAPI + Supabase). Frontend auth wiring lives under `frontend/UWA-3D-Print-Farm/`.
 
 ---
 
 ## Getting started (local)
 
-The implemented application lives in `backend/`. Docker is the preferred way to run it against the team Supabase project.
+Docker Compose runs the FastAPI API and the Vinext/Vite UI against the team Supabase project.
 
 ### Prerequisites
 
@@ -28,11 +28,10 @@ Edit `backend/.env` (never commit this file):
 | `DATABASE_URL` | Prefer the Supabase **Session pooler** URI (IPv4). Prefix with `postgresql+psycopg://`. Direct `db.*.supabase.co` is IPv6-only and often fails inside Docker Desktop on macOS. Pooler username is `postgres.<project-ref>`. |
 | `AUTH_ADAPTER` | `supabase` for real Auth |
 | `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` | Server-only; from Supabase project settings |
-| `SEED_*_PASSWORD` | Distinct non-empty passwords for demo Admin + Farmers |
 
-Full variable list and Auth details: [`backend/README.md`](backend/README.md).
+Full variable list and Auth details: [`backend/README.md`](backend/README.md). Frontend API base URL for Compose is set in `docker-compose.yml` (`NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`).
 
-### 2. Start the API
+### 2. Start API + UI
 
 From the **repository root**:
 
@@ -46,19 +45,27 @@ Detached:
 docker compose up --build -d
 ```
 
-Compose loads `backend/.env` and starts the FastAPI container on port 8000. Postgres and Auth come from Supabase (no local database container). Migrations are **not** applied on boot against the shared DB.
+Compose loads `backend/.env`, builds two images, and starts:
 
-### 3. Open the API
+| Service | Container | Port | Build context |
+|---|---|---|---|
+| `backend` | `backend` | 8000 | `./backend` |
+| `frontend` | `frontend` | 5173 | `./frontend/UWA-3D-Print-Farm` |
+
+Published URLs:
 
 | URL | Purpose |
 |---|---|
-| http://localhost:8000/health | Health check |
-| http://localhost:8000/docs | Swagger UI (try endpoints) |
+| http://localhost:5173 | Frontend UI |
+| http://localhost:8000/health | API health check |
+| http://localhost:8000/docs | Swagger UI |
 | http://localhost:8000/redoc | ReDoc |
 
-There is no app UI at `/` — that path returns 404 by design.
+`frontend` depends on `backend`. The browser calls the API at `http://localhost:8000` (`NEXT_PUBLIC_API_BASE_URL` in `docker-compose.yml`). Uploads persist in `./backend/storage` (mounted into the `backend` container). Postgres and Auth come from Supabase (no local database container). Migrations are **not** applied on boot (`RUN_MIGRATIONS=0` against the shared DB).
 
-### 4. Stop
+Demo Admin and Farmer accounts already exist in the shared Supabase project. Sign in from the UI, or via `POST /api/auth/signin` in `/docs` then **Authorize** with `Bearer <access_token>`.
+
+### 3. Stop
 
 ```bash
 docker compose down
@@ -66,7 +73,7 @@ docker compose down
 
 ### Without Docker
 
-See [`backend/README.md`](backend/README.md) for venv, `uvicorn`, Alembic, tests, and Auth endpoint reference.
+See [`backend/README.md`](backend/README.md) for venv, `uvicorn`, Alembic, tests, and Auth endpoint reference. See [`frontend/UWA-3D-Print-Farm/README.md`](frontend/UWA-3D-Print-Farm/README.md) for local `npm run dev`.
 
 ---
 
