@@ -188,3 +188,222 @@ test("signupStudent uses generic fallback when response has no message", async (
     },
   );
 });
+
+const sampleProfile = {
+  id: "11111111-1111-4111-8111-111111111111",
+  email: "22701234@student.uwa.edu.au",
+  first_name: "Ada",
+  last_name: "Lovelace",
+  role: "student",
+  department: "Mechanical Engineering",
+  student_number: "22701234",
+};
+
+test("signIn POSTs email and password only", async () => {
+  const calls = [];
+  globalThis.fetch = async (url, init = {}) => {
+    calls.push({ url: String(url), init });
+    return new Response(
+      JSON.stringify({
+        access_token: "tok-abc",
+        token_type: "bearer",
+        user: sampleProfile,
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  };
+
+  const { signIn } = await vite.ssrLoadModule("/lib/auth/client.ts");
+  const result = await signIn("22701234@student.uwa.edu.au", "secure-password-1");
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "http://localhost:8000/api/auth/signin");
+  assert.equal(calls[0].init.method, "POST");
+  assert.deepEqual(JSON.parse(calls[0].init.body), {
+    email: "22701234@student.uwa.edu.au",
+    password: "secure-password-1",
+  });
+  assert.equal(result.access_token, "tok-abc");
+  assert.equal(result.user.role, "student");
+});
+
+test("signInWithRoleMatch stores token when profile Role matches", async () => {
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        access_token: "tok-match",
+        token_type: "bearer",
+        user: sampleProfile,
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+
+  const { signInWithRoleMatch } = await vite.ssrLoadModule("/lib/auth/client.ts");
+  const { getAccessToken } = await vite.ssrLoadModule("/lib/auth/session.ts");
+
+  const user = await signInWithRoleMatch(
+    "22701234@student.uwa.edu.au",
+    "secure-password-1",
+    "student",
+  );
+
+  assert.equal(user.role, "student");
+  assert.equal(getAccessToken(), "tok-match");
+});
+
+test("signInWithRoleMatch discards token on Role mismatch", async () => {
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        access_token: "tok-mismatch",
+        token_type: "bearer",
+        user: sampleProfile,
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+
+  const { signInWithRoleMatch, AuthApiError, ROLE_MISMATCH_ERROR } =
+    await vite.ssrLoadModule("/lib/auth/client.ts");
+  const { getAccessToken, setAccessToken } = await vite.ssrLoadModule(
+    "/lib/auth/session.ts",
+  );
+
+  setAccessToken("pre-existing");
+
+  await assert.rejects(
+    () =>
+      signInWithRoleMatch(
+        "22701234@student.uwa.edu.au",
+        "secure-password-1",
+        "farmer",
+      ),
+    (error) => {
+      assert.ok(error instanceof AuthApiError);
+      assert.equal(error.message, ROLE_MISMATCH_ERROR);
+      assert.equal(error.code, "ROLE_MISMATCH");
+      return true;
+    },
+  );
+
+  assert.equal(getAccessToken(), null);
+});
+
+test("signIn surfaces backend error message when present", async () => {
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        detail: {
+          code: "INVALID_CREDENTIALS",
+          message: "Email or password is incorrect",
+        },
+      }),
+      { status: 401, headers: { "content-type": "application/json" } },
+    );
+
+  const { signIn, AuthApiError } = await vite.ssrLoadModule("/lib/auth/client.ts");
+
+  await assert.rejects(
+    () => signIn("ada@student.uwa.edu.au", "wrong"),
+    (error) => {
+      assert.ok(error instanceof AuthApiError);
+      assert.equal(error.message, "Email or password is incorrect");
+      assert.equal(error.status, 401);
+      return true;
+    },
+  );
+});
+
+test("fetchMe sends Authorization Bearer and returns profile", async () => {
+  const calls = [];
+  globalThis.fetch = async (url, init = {}) => {
+    calls.push({ url: String(url), init });
+    return new Response(JSON.stringify(sampleProfile), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  const { fetchMe } = await vite.ssrLoadModule("/lib/auth/client.ts");
+  const { setAccessToken } = await vite.ssrLoadModule("/lib/auth/session.ts");
+  setAccessToken("tok-restore");
+
+  const user = await fetchMe();
+  assert.equal(user.email, sampleProfile.email);
+  assert.equal(calls[0].url, "http://localhost:8000/api/auth/me");
+  assert.equal(calls[0].init.method, "GET");
+  assert.equal(calls[0].init.headers.Authorization, "Bearer tok-restore");
+});
+
+test("restoreSession returns profile on valid token and skips Role-match", async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ ...sampleProfile, role: "admin" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  const { restoreSession } = await vite.ssrLoadModule("/lib/auth/client.ts");
+  const { setAccessToken, getAccessToken } = await vite.ssrLoadModule(
+    "/lib/auth/session.ts",
+  );
+  setAccessToken("tok-valid");
+
+  const user = await restoreSession();
+  assert.equal(user?.role, "admin");
+  assert.equal(getAccessToken(), "tok-valid");
+});
+
+test("restoreSession clears storage when token is invalid", async () => {
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        detail: { code: "UNAUTHORIZED", message: "Invalid token" },
+      }),
+      { status: 401, headers: { "content-type": "application/json" } },
+    );
+
+  const { restoreSession } = await vite.ssrLoadModule("/lib/auth/client.ts");
+  const { setAccessToken, getAccessToken } = await vite.ssrLoadModule(
+    "/lib/auth/session.ts",
+  );
+  setAccessToken("tok-expired");
+
+  const user = await restoreSession();
+  assert.equal(user, null);
+  assert.equal(getAccessToken(), null);
+});
+
+test("signOut clears token and best-effort POSTs signout", async () => {
+  const calls = [];
+  globalThis.fetch = async (url, init = {}) => {
+    calls.push({ url: String(url), init });
+    return new Response(null, { status: 204 });
+  };
+
+  const { signOut } = await vite.ssrLoadModule("/lib/auth/client.ts");
+  const { setAccessToken, getAccessToken } = await vite.ssrLoadModule(
+    "/lib/auth/session.ts",
+  );
+  setAccessToken("tok-logout");
+
+  await signOut();
+  assert.equal(getAccessToken(), null);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "http://localhost:8000/api/auth/signout");
+  assert.equal(calls[0].init.method, "POST");
+  assert.equal(calls[0].init.headers.Authorization, "Bearer tok-logout");
+});
+
+test("signOut still clears token when Sign-out request fails", async () => {
+  globalThis.fetch = async () => {
+    throw new Error("network down");
+  };
+
+  const { signOut } = await vite.ssrLoadModule("/lib/auth/client.ts");
+  const { setAccessToken, getAccessToken } = await vite.ssrLoadModule(
+    "/lib/auth/session.ts",
+  );
+  setAccessToken("tok-logout");
+
+  await signOut();
+  assert.equal(getAccessToken(), null);
+});
