@@ -5,3 +5,13 @@ storage/*
 !storage/.gitkeep
 venv/
 .env
+.vscode/
+.env
+AGENTS.md
+skills-lock.json
+Explanation/
+.agents/
+.DS_Store
+frontend/**/node_modules/
+frontend/**/.wrangler/
+frontend/**/.sites-runtime/
