@@ -5,7 +5,7 @@ import json
 async def consume_messages():
 
     connection = await aio_pika.connect_robust(
-        "amqp://guest:guest@localhost/"
+        os.getenv("RABBITMQ_URL")
     )
 
     channel = await connection.channel()

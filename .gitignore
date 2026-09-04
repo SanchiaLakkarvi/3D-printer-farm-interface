@@ -4,3 +4,4 @@ __pycache__/
 storage/*
 !storage/.gitkeep
 venv/
+.env
