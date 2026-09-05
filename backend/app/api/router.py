@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.v1 import auth, rbac
+from app.api.v1 import auth, materials, printers, rbac
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(auth.router)
 api_router.include_router(rbac.router)
+api_router.include_router(materials.router)
+api_router.include_router(printers.router)

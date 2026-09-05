@@ -15,3 +15,4 @@ Explanation/
 frontend/**/node_modules/
 frontend/**/.wrangler/
 frontend/**/.sites-runtime/
+*.db
