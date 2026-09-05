@@ -3,6 +3,8 @@ __pycache__/
 .venv/
 storage/*
 !storage/.gitkeep
+venv/
+.env
 .vscode/
 .env
 AGENTS.md
