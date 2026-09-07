@@ -10,11 +10,12 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",
     )
 
     app_name: str = "3D Printer Farm Backend"
     app_env: str = "development"
-    api_v1_prefix: str = "/api"
+    api_prefix: str = "/api"
 
     database_url: str = "postgresql+psycopg://printfarm:printfarm@localhost:5432/printfarm"
 
@@ -28,17 +29,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 
-    # Seed Users (demo only) — distinct passwords; never commit real secrets.
-    seed_admin_email: str = "christopher.lamb@uwa.edu.au"
-    seed_admin_password: str = ""
-    seed_farmer1_email: str = "farmer1@uwa.edu.au"
-    seed_farmer1_password: str = ""
-    seed_farmer2_email: str = "farmer2@uwa.edu.au"
-    seed_farmer2_password: str = ""
-    seed_farmer3_email: str = "farmer3@uwa.edu.au"
-    seed_farmer3_password: str = ""
-
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:5173,http://localhost:3000"
 
     file_storage_root: str = "./storage"
     max_upload_bytes: int = 50 * 1024 * 1024  # 50 MB

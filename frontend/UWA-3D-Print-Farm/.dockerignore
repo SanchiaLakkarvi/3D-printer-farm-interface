@@ -1,0 +1,16 @@
+node_modules
+.next
+dist
+.wrangler
+.sites-runtime
+outputs
+work
+coverage
+.env
+.env.*
+!.env.example
+*.md
+.DS_Store
+.git
+.gitignore
+tsconfig.tsbuildinfo

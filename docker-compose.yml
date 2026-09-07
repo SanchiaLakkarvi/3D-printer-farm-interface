@@ -1,7 +1,8 @@
-# FastAPI backend using credentials from backend/.env (Supabase Postgres + Auth).
+# FastAPI backend + Vinext/Vite frontend against Supabase (Postgres + Auth).
 # Do not commit backend/.env — it contains secrets.
 services:
-  api:
+  backend:
+    container_name: backend
     build:
       context: ./backend
     ports:
@@ -14,5 +15,19 @@ services:
       # Never auto-migrate a shared Supabase DB on boot. Set to 1 only for a
       # disposable/fresh database you intentionally want upgraded.
       RUN_MIGRATIONS: "0"
+      # Ensure the Compose UI origin is allowed even if .env omits it.
+      CORS_ORIGINS: "http://localhost:5173,http://localhost:3000"
     volumes:
       - ./backend/storage:/app/storage
+
+  frontend:
+    container_name: frontend
+    build:
+      context: ./frontend/UWA-3D-Print-Farm
+    ports:
+      - "5173:5173"
+    environment:
+      # Browser runs on the host, so use localhost (not the Compose service name).
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+    depends_on:
+      - backend

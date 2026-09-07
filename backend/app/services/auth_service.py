@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Protocol
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -20,120 +18,6 @@ STUDENT_EMAIL_RE = re.compile(
     r"^(?P<student_number>[A-Za-z0-9._%+-]+)@student\.uwa\.edu\.au$",
     re.IGNORECASE,
 )
-
-
-class SeedSettings(Protocol):
-    """Env/config surface for Seed User emails and distinct passwords."""
-
-    seed_admin_email: str
-    seed_admin_password: str
-    seed_farmer1_email: str
-    seed_farmer1_password: str
-    seed_farmer2_email: str
-    seed_farmer2_password: str
-    seed_farmer3_email: str
-    seed_farmer3_password: str
-
-
-@dataclass(frozen=True, slots=True)
-class SeedUserSpec:
-    email: str
-    password: str
-    role: UserRole
-    first_name: str
-    last_name: str
-
-
-def _seed_specs(settings: SeedSettings) -> list[SeedUserSpec]:
-    return [
-        SeedUserSpec(
-            email=settings.seed_admin_email,
-            password=settings.seed_admin_password,
-            role=UserRole.ADMIN,
-            first_name="Christopher",
-            last_name="Lamb",
-        ),
-        SeedUserSpec(
-            email=settings.seed_farmer1_email,
-            password=settings.seed_farmer1_password,
-            role=UserRole.FARMER,
-            first_name="Farmer",
-            last_name="One",
-        ),
-        SeedUserSpec(
-            email=settings.seed_farmer2_email,
-            password=settings.seed_farmer2_password,
-            role=UserRole.FARMER,
-            first_name="Farmer",
-            last_name="Two",
-        ),
-        SeedUserSpec(
-            email=settings.seed_farmer3_email,
-            password=settings.seed_farmer3_password,
-            role=UserRole.FARMER,
-            first_name="Farmer",
-            last_name="Three",
-        ),
-    ]
-
-
-def seed_demo_users(
-    *,
-    db: Session,
-    auth: AuthPort,
-    settings: SeedSettings,
-) -> list[User]:
-    """Create Seed Users in Auth + application profiles (demo/ops tooling).
-
-    Distinct passwords must come from env/seed config. Profiles use null
-    student_number and share the Auth UUID. Not Student Sign-up.
-    """
-    specs = _seed_specs(settings)
-    passwords = [spec.password.strip() for spec in specs]
-    if any(not password for password in passwords):
-        raise BadRequestError(
-            "SEED_PASSWORD_REQUIRED",
-            "Each Seed User needs a non-empty password in env/seed config",
-        )
-    if len(set(passwords)) != len(passwords):
-        raise BadRequestError(
-            "SEED_PASSWORD_REQUIRED",
-            "Each Seed User must have a distinct password in env/seed config",
-        )
-
-    created: list[User] = []
-    for spec in specs:
-        user = _create_seed_user(db=db, auth=auth, spec=spec)
-        created.append(user)
-    return created
-
-
-def _create_seed_user(*, db: Session, auth: AuthPort, spec: SeedUserSpec) -> User:
-    normalized_email = spec.email.strip().lower()
-    existing = db.scalar(select(User).where(User.email == normalized_email))
-    if existing is not None:
-        raise ConflictError(f"Seed User already exists: {normalized_email}")
-
-    auth_user_id = auth.register(email=normalized_email, password=spec.password)
-    user = User(
-        id=auth_user_id,
-        email=normalized_email,
-        first_name=spec.first_name,
-        last_name=spec.last_name,
-        student_number=None,
-        role=spec.role,
-        department=None,
-        created_at=datetime.now(timezone.utc),
-    )
-    db.add(user)
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        auth.delete_user(auth_user_id)
-        raise ConflictError(f"Seed User already exists: {normalized_email}") from None
-    db.refresh(user)
-    return user
 
 
 def parse_student_email(email: str) -> str:
