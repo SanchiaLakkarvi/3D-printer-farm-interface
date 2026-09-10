@@ -142,3 +142,68 @@ def test_list_materials_returns_created(
     materials = response.json()
     assert len(materials) == 1
     assert materials[0]["name"] == "PETG Blue"
+
+
+def test_update_material_as_admin(
+    auth_client: TestClient, db_session: Session, auth_adapter: FakeAuthAdapter,
+) -> None:
+    _seed_users(db_session, auth_adapter)
+    admin_token = _token(auth_client, ADMIN_EMAIL, ADMIN_PASSWORD)
+
+    create_resp = auth_client.post(
+        "/api/materials",
+        json={"name": "PLA Black", "type": "PLA", "colour": "black"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    material_id = create_resp.json()["id"]
+
+    response = auth_client.patch(
+        f"/api/materials/{material_id}",
+        json={"name": "PLA Black Matte", "type": "PLA", "colour": "black"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["name"] == "PLA Black Matte"
+    assert data["type"] == "PLA"
+    assert data["colour"] == "black"
+
+
+def test_update_material_as_student_forbidden(
+    auth_client: TestClient, db_session: Session, auth_adapter: FakeAuthAdapter,
+) -> None:
+    _seed_users(db_session, auth_adapter)
+    admin_token = _token(auth_client, ADMIN_EMAIL, ADMIN_PASSWORD)
+    student_token = _token(auth_client, STUDENT_EMAIL, STUDENT_PASSWORD)
+
+    create_resp = auth_client.post(
+        "/api/materials",
+        json={"name": "PLA Green", "type": "PLA", "colour": "green"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    material_id = create_resp.json()["id"]
+
+    response = auth_client.patch(
+        f"/api/materials/{material_id}",
+        json={"name": "PLA Dark Green"},
+        headers={"Authorization": f"Bearer {student_token}"},
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"]["code"] == "FORBIDDEN"
+
+
+def test_update_material_not_found(
+    auth_client: TestClient, db_session: Session, auth_adapter: FakeAuthAdapter,
+) -> None:
+    import uuid
+
+    _seed_users(db_session, auth_adapter)
+    admin_token = _token(auth_client, ADMIN_EMAIL, ADMIN_PASSWORD)
+
+    response = auth_client.patch(
+        f"/api/materials/{uuid.uuid4()}",
+        json={"name": "Nonexistent"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"]["code"] == "NOT_FOUND"
