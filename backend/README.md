@@ -31,11 +31,28 @@ Key settings:
 | `DATABASE_URL` | PostgreSQL connection string (Supabase or local) |
 | `AUTH_ADAPTER` | `fake` (local/tests) or `supabase` (real Auth) |
 | `SUPABASE_URL` | Supabase project URL (server-only) |
-| `SUPABASE_ANON_KEY` | Supabase anon key (server-only; used for Sign-in/token checks) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service role key (server-only; never expose to the browser) |
+| `SUPABASE_ANON_KEY` | Supabase anon key (server-only; used for Sign-up/Sign-in/token checks) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key (server-only; never expose to the browser; Seed/Admin user cleanup) |
 | `JWT_SECRET_KEY` | Legacy placeholder; sessions come from Supabase Auth when `AUTH_ADAPTER=supabase` |
 | `CORS_ORIGINS` | Allowed frontend origins (comma-separated; local Vite uses `http://localhost:5173`) |
 | `MOCK_PRINTER_BASE_URL` | URL of the mock printer server |
+
+When `AUTH_ADAPTER=supabase`, enable **Confirm email** in the Supabase Dashboard
+(Authentication → Sign In / Providers → Email). Set Site URL to the UI origin
+(e.g. `http://localhost:5173`) and allow that origin under Redirect URLs.
+
+Important: edit **Authentication → Email Templates → Confirm signup** so the
+button links to the app with a `token_hash`, **not** `{{ .ConfirmationURL }}`:
+
+```html
+<a href="{{ .SiteURL }}/?token_hash={{ .TokenHash }}&type=signup">Confirm email address</a>
+```
+
+`ConfirmationURL` confirms on a GET to Supabase and is often auto-opened by
+Outlook / Safe Links (~15–20s after delivery). The app link only opens a
+**Confirm email** screen; confirmation happens when the student clicks, via
+`POST /api/auth/confirm-email`. The `users` profile is still created on the
+first successful Sign-in after confirm.
 
 ### Demo Admin + Farmers
 
@@ -82,8 +99,9 @@ stop with `docker compose down`.
 
 | Method | Path | Auth | Behaviour |
 |---|---|---|---|
-| `POST` | `/api/auth/signup` | public | Student Sign-up → profile (`student`) |
-| `POST` | `/api/auth/signin` | public | email + password → `access_token` + safe profile |
+| `POST` | `/api/auth/signup` | public | Student Sign-up → pending (`message`, `email`); no profile yet |
+| `POST` | `/api/auth/confirm-email` | public | Exchange `token_hash` after explicit Confirm click |
+| `POST` | `/api/auth/signin` | public | email + password → `access_token` + safe profile (creates student on first confirmed Sign-in) |
 | `GET` | `/api/auth/me` | Bearer | profile for the token subject |
 | `POST` | `/api/auth/signout` | public | `204`; no server session store |
 | `GET` | `/api/rbac/farmer` | Bearer + Farmer | probe; Admin OK (Admin ⊃ Farmer); Student `403` |

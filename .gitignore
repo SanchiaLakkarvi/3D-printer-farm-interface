@@ -16,3 +16,4 @@ frontend/**/node_modules/
 frontend/**/.wrangler/
 frontend/**/.sites-runtime/
 *.db
+Docs/specs/
