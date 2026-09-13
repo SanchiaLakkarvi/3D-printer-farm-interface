@@ -51,3 +51,11 @@ UPLOAD G-CODE
     +-- YES --> PASS --> SELECT_PRINTER
     |
     +-- NO  --> FAIL --> UPLOAD_GCODE / RE-SLICE
+
+
+## Run Validation Tests
+
+The validation test suite can be run using the provided Bash script:
+
+```bash
+bash validation/test_validation.sh
