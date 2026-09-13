@@ -26,6 +26,16 @@ export type UserProfile = {
   student_number: string | null;
 };
 
+/** 201 from Student Sign-up — confirm email before Sign-in; no session. */
+export type SignupPendingResult = {
+  message: string;
+  email: string;
+};
+
+export type ConfirmEmailResult = {
+  message: string;
+};
+
 export type SignInResult = {
   access_token: string;
   token_type: string;
@@ -108,7 +118,7 @@ async function requestJson(
 
 export async function signupStudent(
   input: StudentSignupInput,
-): Promise<UserProfile> {
+): Promise<SignupPendingResult> {
   const { body } = await requestJson("/api/auth/signup", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -120,7 +130,20 @@ export async function signupStudent(
       department: input.department,
     }),
   });
-  return body as UserProfile;
+  return body as SignupPendingResult;
+}
+
+/** Explicit confirm after the user clicks Confirm (not on email-link GET alone). */
+export async function confirmEmail(
+  tokenHash: string,
+  type: string = "signup",
+): Promise<ConfirmEmailResult> {
+  const { body } = await requestJson("/api/auth/confirm-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token_hash: tokenHash, type }),
+  });
+  return body as ConfirmEmailResult;
 }
 
 export async function signIn(
