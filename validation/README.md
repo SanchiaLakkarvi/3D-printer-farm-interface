@@ -52,6 +52,7 @@ UPLOAD G-CODE
     |
     +-- NO  --> FAIL --> UPLOAD_GCODE / RE-SLICE
 
+```
 
 ## Run Validation Tests
 
