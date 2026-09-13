@@ -72,6 +72,18 @@ M84 X Y E
 {extra_metadata}{config_end}"""
 
 
+def print_match_result(result: dict) -> None:
+    """Print the matched printer information for successful tests."""
+
+    print()
+    print("    Validation result")
+    print(f"    Status          : {result['status']}")
+    print(f"    Matched printer : {result['compatible_printer']}")
+    print(f"    Profile         : {result['compatible_profile']}")
+    print(f"    Material        : {result['required_material']}")
+    print(f"    Next step       : {result['next_step']}")
+
+
 class TestGCodeValidator(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -88,8 +100,12 @@ class TestGCodeValidator(unittest.TestCase):
     # ------------------------------------------------------------------
     # Synthetic unit tests
     # ------------------------------------------------------------------
-    def test_valid_coreone_gcode_passes(self) -> None:
-        path = self.write_file("valid_coreone.gcode", make_coreone_gcode())
+    def test_valid_coreone_gcode_matches_core_one(self) -> None:
+        path = self.write_file(
+            "valid_coreone.gcode",
+            make_coreone_gcode(),
+        )
+
         result = validate_upload(path)
 
         self.assertTrue(result["passed"])
@@ -102,6 +118,8 @@ class TestGCodeValidator(unittest.TestCase):
         self.assertEqual(result["required_material"], "PLA")
         self.assertEqual(result["next_step"], "SELECT_PRINTER")
 
+        print_match_result(result)
+
     def test_missing_file_fails_stage_1(self) -> None:
         result = validate_upload(self.root / "missing.gcode")
 
@@ -110,7 +128,11 @@ class TestGCodeValidator(unittest.TestCase):
         self.assertEqual(result["next_step"], "UPLOAD_GCODE")
 
     def test_unsupported_extension_fails_stage_1(self) -> None:
-        path = self.write_file("fake.txt", make_coreone_gcode())
+        path = self.write_file(
+            "fake.txt",
+            make_coreone_gcode(),
+        )
+
         result = validate_upload(path)
 
         self.assertFalse(result["passed"])
@@ -121,6 +143,7 @@ class TestGCodeValidator(unittest.TestCase):
             "incomplete_config.gcode",
             make_coreone_gcode(include_config_end=False),
         )
+
         result = validate_upload(path)
 
         self.assertFalse(result["passed"])
@@ -131,6 +154,7 @@ class TestGCodeValidator(unittest.TestCase):
             "unsafe_end.gcode",
             make_coreone_gcode(include_nozzle_off=False),
         )
+
         result = validate_upload(path)
 
         self.assertFalse(result["passed"])
@@ -142,6 +166,7 @@ class TestGCodeValidator(unittest.TestCase):
             "missing_material.gcode",
             make_coreone_gcode(include_filament_type=False),
         )
+
         result = validate_upload(path)
 
         self.assertFalse(result["passed"])
@@ -151,19 +176,26 @@ class TestGCodeValidator(unittest.TestCase):
     def test_conflicting_metadata_fails_stage_3(self) -> None:
         path = self.write_file(
             "conflicting_metadata.gcode",
-            make_coreone_gcode(extra_metadata="; printer_model = MK4\n"),
+            make_coreone_gcode(
+                extra_metadata="; printer_model = MK4\n",
+            ),
         )
+
         result = validate_upload(path)
 
         self.assertFalse(result["passed"])
         self.assertEqual(result["failed_stage"], 3)
-        self.assertIn("Conflicting critical metadata", result["errors"][0])
+        self.assertIn(
+            "Conflicting critical metadata",
+            result["errors"][0],
+        )
 
     def test_m862_model_mismatch_fails_stage_4(self) -> None:
         path = self.write_file(
             "m862_mismatch.gcode",
             make_coreone_gcode(m862_model="XL5IS"),
         )
+
         result = validate_upload(path)
 
         self.assertFalse(result["passed"])
@@ -173,8 +205,12 @@ class TestGCodeValidator(unittest.TestCase):
     def test_unsupported_printer_profile_fails_stage_6(self) -> None:
         path = self.write_file(
             "unsupported_printer.gcode",
-            make_coreone_gcode(metadata_model="MK4", m862_model="MK4"),
+            make_coreone_gcode(
+                metadata_model="MK4",
+                m862_model="MK4",
+            ),
         )
+
         result = validate_upload(path)
 
         self.assertFalse(result["passed"])
@@ -186,43 +222,88 @@ class TestGCodeValidator(unittest.TestCase):
             "too_hot.gcode",
             make_coreone_gcode(temperature=350),
         )
+
         result = validate_upload(path)
 
         self.assertFalse(result["passed"])
         self.assertEqual(result["failed_stage"], 6)
+
         reasons = " ".join(
             reason
             for check in result["printer_checks"].values()
             for reason in check["reasons"]
         )
-        self.assertIn("exceeds configured printer maximum", reasons)
+
+        self.assertIn(
+            "exceeds configured printer maximum",
+            reasons,
+        )
 
     # ------------------------------------------------------------------
     # Real sample files in validation/data/
     # ------------------------------------------------------------------
-    def test_real_coreone_gcode_passes(self) -> None:
-        self.assertTrue(REAL_GCODE.is_file(), f"Missing test file: {REAL_GCODE}")
+    def test_real_coreone_gcode_matches_core_one(self) -> None:
+        self.assertTrue(
+            REAL_GCODE.is_file(),
+            f"Missing test file: {REAL_GCODE}",
+        )
 
         result = validate_upload(REAL_GCODE)
 
         self.assertTrue(result["passed"], result)
-        self.assertEqual(result["compatible_profile"], "core_one_hf04")
-        self.assertEqual(result["required_material"], "PLA")
-        self.assertEqual(result["next_step"], "SELECT_PRINTER")
+        self.assertEqual(
+            result["compatible_profile"],
+            "core_one_hf04",
+        )
+        self.assertEqual(
+            result["compatible_printer"],
+            "Prusa CORE One HF0.4 nozzle",
+        )
+        self.assertEqual(
+            result["required_material"],
+            "PLA",
+        )
+        self.assertEqual(
+            result["next_step"],
+            "SELECT_PRINTER",
+        )
+
+        print_match_result(result)
 
     @unittest.skipUnless(
         shutil.which("bgcode") or shutil.which("bgcode.exe"),
-        "Prusa libbgcode CLI is not installed; skipping strict real .bgcode test.",
+        (
+            "Prusa libbgcode CLI is not installed; "
+            "skipping strict real .bgcode test."
+        ),
     )
-    def test_real_coreone_bgcode_passes(self) -> None:
-        self.assertTrue(REAL_BGCODE.is_file(), f"Missing test file: {REAL_BGCODE}")
+    def test_real_coreone_bgcode_matches_core_one(self) -> None:
+        self.assertTrue(
+            REAL_BGCODE.is_file(),
+            f"Missing test file: {REAL_BGCODE}",
+        )
 
         result = validate_upload(REAL_BGCODE)
 
         self.assertTrue(result["passed"], result)
-        self.assertEqual(result["compatible_profile"], "core_one_hf04")
-        self.assertEqual(result["required_material"], "PLA")
-        self.assertEqual(result["next_step"], "SELECT_PRINTER")
+        self.assertEqual(
+            result["compatible_profile"],
+            "core_one_hf04",
+        )
+        self.assertEqual(
+            result["compatible_printer"],
+            "Prusa CORE One HF0.4 nozzle",
+        )
+        self.assertEqual(
+            result["required_material"],
+            "PLA",
+        )
+        self.assertEqual(
+            result["next_step"],
+            "SELECT_PRINTER",
+        )
+
+        print_match_result(result)
 
 
 if __name__ == "__main__":
