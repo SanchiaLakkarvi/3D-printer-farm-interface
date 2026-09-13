@@ -3306,9 +3306,9 @@ G29 P3.2
 G29 P3.13
 G29 A
 ; prepare for purge
-M104 S230
+M104 S350
 G0 X249 Y-2.5 Z15 F4800
-M109 S230
+M109 S350
 G92 E0
 M569 S0 E
 M591 S0
@@ -270799,5 +270799,4 @@ M73 Q100 S0
 ; wiping_volumes_use_custom_matrix = 0
 ; xy_size_compensation = 0
 ; z_offset = 0
-
-
+; prusaslicer_config = end
