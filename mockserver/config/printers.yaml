@@ -24,7 +24,7 @@ printers:
       - {slot: 2, nozzle_diameter_mm: 0.4, high_flow: false, spool: {material: PLA, colour: white, remaining_g: 1000}}
       - {slot: 3, nozzle_diameter_mm: 0.4, high_flow: false, spool: {material: PLA, colour: blue, remaining_g: 1000}}
       - {slot: 4, nozzle_diameter_mm: 0.4, high_flow: false, spool: {material: PLA, colour: red, remaining_g: 1000}}
-    simulation_speed: 120
+    simulation_speed: 2
     sdk_identity: {type: 0, version: 0, subversion: 0, header: MOCK}
 
   - id: mock-coreone-01
