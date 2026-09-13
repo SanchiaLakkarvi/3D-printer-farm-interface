@@ -15,7 +15,10 @@ STUDENT_EMAIL = "22705555@student.uwa.edu.au"
 STUDENT_PASSWORD = "secure-password-1"
 
 
-def _signup_student(auth_client: TestClient) -> dict:
+def _signup_and_confirm(
+    auth_client: TestClient,
+    auth_adapter: FakeAuthAdapter,
+) -> dict:
     response = auth_client.post(
         "/api/auth/signup",
         json={
@@ -27,6 +30,7 @@ def _signup_student(auth_client: TestClient) -> dict:
         },
     )
     assert response.status_code == 201
+    auth_adapter.confirm_email(STUDENT_EMAIL)
     return response.json()
 
 
@@ -59,8 +63,11 @@ def _seed_profile(
     return user
 
 
-def test_signin_success_returns_token_and_safe_profile(auth_client: TestClient) -> None:
-    profile = _signup_student(auth_client)
+def test_signin_success_returns_token_and_safe_profile(
+    auth_client: TestClient,
+    auth_adapter: FakeAuthAdapter,
+) -> None:
+    _signup_and_confirm(auth_client, auth_adapter)
 
     response = auth_client.post(
         "/api/auth/signin",
@@ -71,13 +78,13 @@ def test_signin_success_returns_token_and_safe_profile(auth_client: TestClient) 
     body = response.json()
     assert body["token_type"] == "bearer"
     assert isinstance(body["access_token"], str) and body["access_token"]
-    assert body["user"]["id"] == profile["id"]
     assert body["user"]["email"] == STUDENT_EMAIL
     assert body["user"]["first_name"] == "Ada"
     assert body["user"]["last_name"] == "Lovelace"
     assert body["user"]["role"] == "student"
     assert body["user"]["department"] == "engineering"
     assert body["user"]["student_number"] == "22705555"
+    assert "id" in body["user"]
     assert "password" not in body
     assert "password" not in body["user"]
 
@@ -125,8 +132,11 @@ def test_signin_succeeds_for_farmer_and_admin_roles(
     assert admin.json()["user"]["role"] == "admin"
 
 
-def test_signin_rejects_bad_password(auth_client: TestClient) -> None:
-    _signup_student(auth_client)
+def test_signin_rejects_bad_password(
+    auth_client: TestClient,
+    auth_adapter: FakeAuthAdapter,
+) -> None:
+    _signup_and_confirm(auth_client, auth_adapter)
 
     response = auth_client.post(
         "/api/auth/signin",
@@ -151,8 +161,9 @@ def test_signin_rejects_unknown_email(auth_client: TestClient) -> None:
 
 def test_signin_loads_role_from_profile_ignores_client_role(
     auth_client: TestClient,
+    auth_adapter: FakeAuthAdapter,
 ) -> None:
-    _signup_student(auth_client)
+    _signup_and_confirm(auth_client, auth_adapter)
 
     response = auth_client.post(
         "/api/auth/signin",
@@ -167,13 +178,17 @@ def test_signin_loads_role_from_profile_ignores_client_role(
     assert response.json()["user"]["role"] == "student"
 
 
-def test_me_returns_profile_for_token_subject(auth_client: TestClient) -> None:
-    profile = _signup_student(auth_client)
+def test_me_returns_profile_for_token_subject(
+    auth_client: TestClient,
+    auth_adapter: FakeAuthAdapter,
+) -> None:
+    _signup_and_confirm(auth_client, auth_adapter)
     signin = auth_client.post(
         "/api/auth/signin",
         json={"email": STUDENT_EMAIL, "password": STUDENT_PASSWORD},
     )
     token = signin.json()["access_token"]
+    profile_id = signin.json()["user"]["id"]
 
     response = auth_client.get(
         "/api/auth/me",
@@ -182,7 +197,7 @@ def test_me_returns_profile_for_token_subject(auth_client: TestClient) -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert body["id"] == profile["id"]
+    assert body["id"] == profile_id
     assert body["email"] == STUDENT_EMAIL
     assert body["role"] == "student"
     assert "password" not in body
@@ -207,7 +222,7 @@ def test_me_rejects_expired_token(
     auth_client: TestClient,
     auth_adapter: FakeAuthAdapter,
 ) -> None:
-    _signup_student(auth_client)
+    _signup_and_confirm(auth_client, auth_adapter)
     signin = auth_client.post(
         "/api/auth/signin",
         json={"email": STUDENT_EMAIL, "password": STUDENT_PASSWORD},
@@ -228,9 +243,12 @@ def test_signout_returns_204_without_server_session(auth_client: TestClient) -> 
     assert response.status_code == 204
 
 
-def test_signout_does_not_revoke_existing_bearer_token(auth_client: TestClient) -> None:
+def test_signout_does_not_revoke_existing_bearer_token(
+    auth_client: TestClient,
+    auth_adapter: FakeAuthAdapter,
+) -> None:
     """Server Sign-out is a no-op; clients must discard the token locally."""
-    _signup_student(auth_client)
+    _signup_and_confirm(auth_client, auth_adapter)
     token = auth_client.post(
         "/api/auth/signin",
         json={"email": STUDENT_EMAIL, "password": STUDENT_PASSWORD},

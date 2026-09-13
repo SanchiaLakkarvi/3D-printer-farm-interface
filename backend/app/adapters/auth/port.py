@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Protocol
+from dataclasses import dataclass, field
+from typing import Mapping, Protocol
 from uuid import UUID
 
 
@@ -13,19 +13,37 @@ class AuthSession:
 
     access_token: str
     user_id: UUID
+    user_metadata: Mapping[str, object] = field(default_factory=dict)
 
 
 class AuthPort(Protocol):
     """Narrow Supabase Auth boundary used by application services."""
 
-    def register(self, *, email: str, password: str) -> UUID:
-        """Create an Auth user; return its id (shared with the app profile)."""
+    def register(
+        self,
+        *,
+        email: str,
+        password: str,
+        first_name: str,
+        last_name: str,
+        department: str,
+        email_redirect_to: str | None = None,
+    ) -> UUID:
+        """Create an Auth user with profile metadata; return its id."""
 
     def sign_in(self, *, email: str, password: str) -> AuthSession:
         """Verify credentials and return a session token + Auth user id."""
 
     def validate_token(self, token: str) -> UUID:
         """Return the Auth user id for a valid access token."""
+
+    def confirm_email_token(
+        self,
+        *,
+        token_hash: str,
+        type: str = "signup",
+    ) -> None:
+        """Confirm email via token_hash (POST). Do not confirm on email-link GET alone."""
 
     def delete_user(self, user_id: UUID) -> None:
         """Best-effort cleanup when profile creation fails after register."""
