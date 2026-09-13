@@ -1,19 +1,31 @@
 #!/usr/bin/env bash
+
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TEST_FILE="$ROOT_DIR/tests/test_gcode_validator.py"
+VALIDATION_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$VALIDATION_DIR/.." && pwd)"
+TEST_FILE="$VALIDATION_DIR/tests/test_gcode_validator.py"
 
-if command -v python3 >/dev/null 2>&1; then
+# Prefer the project's virtual environment.
+if [[ -x "$REPO_ROOT/.venv/bin/python" ]]; then
+    PYTHON_BIN="$REPO_ROOT/.venv/bin/python"
+
+elif [[ -x "$REPO_ROOT/.venv/Scripts/python.exe" ]]; then
+    PYTHON_BIN="$REPO_ROOT/.venv/Scripts/python.exe"
+
+# Otherwise use an installed Python.
+elif command -v python3 >/dev/null 2>&1; then
     PYTHON_BIN="$(command -v python3)"
+
 elif command -v python >/dev/null 2>&1; then
     PYTHON_BIN="$(command -v python)"
+
 elif command -v py >/dev/null 2>&1; then
     PYTHON_BIN="$(command -v py)"
-elif [[ -x "/c/Users/hanng/AppData/Local/Programs/Thonny/python.exe" ]]; then
-    PYTHON_BIN="/c/Users/hanng/AppData/Local/Programs/Thonny/python.exe"
+
 else
     echo "ERROR: Python was not found."
+    echo "Install Python or create a .venv in the repository root."
     exit 1
 fi
 
