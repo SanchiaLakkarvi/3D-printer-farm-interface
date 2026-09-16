@@ -9,11 +9,15 @@ from sqlalchemy.orm import Session
 
 from app.adapters.auth.port import AuthPort
 from app.api.deps import get_auth_port, get_current_user
+from app.core.config import settings
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.auth import (
+    ConfirmEmailRequest,
+    ConfirmEmailResponse,
     SignInRequest,
     SignInResponse,
+    SignupPendingResponse,
     StudentSignupRequest,
     UserProfileResponse,
 )
@@ -36,15 +40,15 @@ def _profile_response(user: User) -> UserProfileResponse:
 
 @router.post(
     "/signup",
-    response_model=UserProfileResponse,
+    response_model=SignupPendingResponse,
     status_code=status.HTTP_201_CREATED,
 )
 def student_signup(
     body: StudentSignupRequest,
     db: Annotated[Session, Depends(get_db)],
     auth: Annotated[AuthPort, Depends(get_auth_port)],
-) -> UserProfileResponse:
-    user = auth_service.signup_student(
+) -> SignupPendingResponse:
+    pending = auth_service.signup_student(
         db=db,
         auth=auth,
         first_name=body.first_name,
@@ -52,8 +56,23 @@ def student_signup(
         email=str(body.email),
         password=body.password,
         department=body.department,
+        email_redirect_to=settings.email_confirm_redirect_url,
     )
-    return _profile_response(user)
+    return SignupPendingResponse(message=pending.message, email=pending.email)
+
+
+@router.post("/confirm-email", response_model=ConfirmEmailResponse)
+def confirm_email(
+    body: ConfirmEmailRequest,
+    auth: Annotated[AuthPort, Depends(get_auth_port)],
+) -> ConfirmEmailResponse:
+    """Confirm Student email after an explicit UI action (not a GET prefetch)."""
+    result = auth_service.confirm_student_email(
+        auth=auth,
+        token_hash=body.token_hash,
+        type=body.type,
+    )
+    return ConfirmEmailResponse(message=result.message)
 
 
 @router.post("/signin", response_model=SignInResponse)

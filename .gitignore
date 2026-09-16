@@ -3,6 +3,8 @@ __pycache__/
 .venv/
 storage/*
 !storage/.gitkeep
+venv/
+.env
 .vscode/
 .env
 AGENTS.md
@@ -14,3 +16,4 @@ frontend/**/node_modules/
 frontend/**/.wrangler/
 frontend/**/.sites-runtime/
 *.db
+Docs/specs/

@@ -24,6 +24,27 @@ class SignInRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
     # Client Role claims are ignored if present (extra="ignore").
 
+
+class SignupPendingResponse(BaseModel):
+    """Student Sign-up accepted; confirm email before Sign-in creates the profile."""
+
+    message: str
+    email: str
+
+
+class ConfirmEmailRequest(BaseModel):
+    """Explicit email confirmation (button click), not mail-scanner GET prefetch."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    token_hash: str = Field(min_length=8, max_length=512)
+    type: str = Field(default="signup", min_length=1, max_length=32)
+
+
+class ConfirmEmailResponse(BaseModel):
+    message: str
+
+
 class UserProfileResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

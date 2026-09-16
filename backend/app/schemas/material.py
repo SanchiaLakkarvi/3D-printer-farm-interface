@@ -13,6 +13,12 @@ class MaterialCreate(BaseModel):
     colour: str
 
 
+class MaterialUpdate(BaseModel):
+    name: str | None = None
+    type: str | None = None
+    colour: str | None = None
+
+
 class MaterialOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
