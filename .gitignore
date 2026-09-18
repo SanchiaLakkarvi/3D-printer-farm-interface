@@ -17,3 +17,5 @@ frontend/**/.wrangler/
 frontend/**/.sites-runtime/
 *.db
 Docs/specs/
+Docs/adr/
+raw/
