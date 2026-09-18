@@ -317,6 +317,42 @@ curl http://127.0.0.1:9000/dev/events
 curl http://127.0.0.1:9000/dev/telemetry
 ```
 
+## PrusaLink API (used by the UWA backend)
+
+The backend talks to printers the way it will talk to real ones: over the
+PrusaLink API v1 ([spec](https://github.com/prusa3d/Prusa-Link-Web/blob/master/spec/openapi.yaml)).
+Each mock printer is mounted under its own prefix, which is that printer's
+"base URL":
+
+```text
+http://localhost:8080/prusalink/mock-coreone-01
+http://localhost:8080/prusalink/mock-xl-01
+```
+
+Auth is HTTP Digest, username `maker`, password = the printer's `token` in
+`config/printers.yaml` (synthetic values).
+
+| Endpoint | Behaviour |
+| --- | --- |
+| `GET /api/version` | Mock identity |
+| `GET /api/v1/status` | `printer.state` + temps; `job` block while printing |
+| `GET /api/v1/job` | Active job, or `204` |
+| `PUT /api/v1/files/usb/{path}` | Upload. `Print-After-Upload: ?1` validates and starts. `Overwrite: ?1` replaces. `409` if a job is running |
+| `POST /api/v1/files/usb/{path}` | Start an uploaded file |
+| `DELETE /api/v1/job/{id}` | Stop |
+| `PUT /api/v1/job/{id}/pause` / `resume` | Pause / resume |
+
+An invalid file is accepted but the printer goes to `ATTENTION` instead of
+printing, as real firmware does. Only the `usb` storage exists.
+
+```bash
+curl --digest -u maker:mock-core-token \
+  http://localhost:8080/prusalink/mock-coreone-01/api/v1/status
+```
+
+The PrusaLink layer is tested without the SDK (`tests/test_prusalink.py`), which
+matters on macOS where the SDK's `inotify` dependency does not load.
+
 ## Operator/test FastAPI endpoints
 
 - `GET /health`
