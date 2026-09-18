@@ -2,7 +2,7 @@
 
 A web-based 3D printer farm management system designed to provide a central interface for managing users, print jobs, queues, and multiple Prusa 3D printers.
 
-> **Project status:** Backend MVP in progress (FastAPI + Supabase). Frontend auth wiring lives under `frontend/UWA-3D-Print-Farm/`.
+> **Project status:** Backend MVP in progress (FastAPI + Supabase). Frontend auth wiring, G-code upload, the print queue and job history live under `frontend/UWA-3D-Print-Farm/`. Printers are driven through PrusaLink and currently tested against the mock printers in `mockserver/`.
 
 ---
 
@@ -70,6 +70,51 @@ Demo Admin and Farmer accounts already exist in the shared Supabase project. Sig
 ```bash
 docker compose down
 ```
+
+### Demo with mock printers (no Supabase)
+
+To see the whole flow (upload, validate, queue, print, history) without Supabase or a real printer, layer the demo file on top of the normal Compose file. From the **repository root**:
+
+```bash
+cp backend/.env.example backend/.env   # only if you have not already
+docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+```
+
+This starts the same `backend` and `frontend`, plus:
+
+| Service | Container | Port | Build context |
+|---|---|---|---|
+| `db` | auto-named (Postgres 16, demo data only) | not published | image `postgres:16` |
+| `mockserver` | auto-named (mock Prusa printers) | 8080 | `./mockserver` |
+
+Published URLs:
+
+| URL | Purpose |
+|---|---|
+| http://localhost:5173 | Frontend UI |
+| http://localhost:8000/docs | Swagger UI |
+| http://localhost:8080/docs | Mock printer operator API |
+| http://localhost:8080/prusalink/mock-coreone-01/api/v1/status | Mock CORE One, PrusaLink API (Digest auth: `maker` / `mock-core-token`) |
+| http://localhost:8080/prusalink/mock-xl-01/api/v1/status | Mock XL, PrusaLink API (Digest auth: `maker` / `mock-xl-token`) |
+
+The demo file overrides the backend to use `AUTH_ADAPTER=fake`, applies migrations and seeds two printers and three materials on boot (`RUN_MIGRATIONS=1`, `RUN_SEED=1`), and turns on the printer poller (`PRINTER_POLL_INTERVAL_S=2`). Do not use it against the shared Supabase database.
+
+**Create a demo student.** With the fake Auth adapter no email is sent, so confirm the account through the API. Accounts live in memory and disappear when the backend restarts.
+
+1. In the UI choose **Student**, then **Create a student account**.
+2. Confirm it (use your email, lower case):
+
+```bash
+curl -X POST http://localhost:8000/api/auth/confirm-email \
+  -H 'content-type: application/json' \
+  -d '{"token_hash":"confirm-you@student.uwa.edu.au","type":"signup"}'
+```
+
+3. Sign in, open **Upload file**, choose `raw/Rook1_0.4n_0.15mm_PLA_COREONE_1h5m.gcode`, pick **PLA White** and submit. The job starts on the mock CORE One within a few seconds. The mock runs 60x faster than real time, so this 1 h 5 m print finishes in about a minute. Then check **My jobs**.
+
+The mock printers need Docker on macOS: the Prusa SDK they are built on relies on Linux `inotify`. Its logs repeat `host.docker.internal:9000 ... Connection refused`; that is the mock's legacy Connect transport and is harmless. Details: [`mockserver/README.md`](mockserver/README.md).
+
+**Port conflicts.** If a previous stack is still running, stop it first: `docker compose down`, and `docker rm -f prusa-mock` if you started the mock by hand. Stop the demo and delete its database with `docker compose -f docker-compose.yml -f docker-compose.demo.yml down -v`.
 
 ### Without Docker
 
@@ -694,12 +739,16 @@ Collection Notification
 - Prusa integration identified as a core technical area
 - Backend foundation: FastAPI, Docker Compose, Supabase Postgres + Auth
 - Email/password Auth with Student Sign-up (email confirmation), Sign-in, `/me`, and RBAC probes
+- G-code upload and validation (`backend/app/validation`), compatible-printer selection, job submission
+- Per-printer print queue with estimated start and completion times; print history and farm statistics
+- PrusaLink printer adapter and background sync (send queued jobs, track status, notification rows), tested against the mock printers
+- Frontend: live dashboard, upload flow, and queue / job history
 
 ### Not Yet Finalised / not built
 
-- Frontend (Next.js planned; not in repo yet)
-- Exact Prusa API/SDK integration approach
-- Exact G-code validation rules
+- Frontend: Notifications page, Farmer screens (collection, maintenance) and Admin screens (users, pricing, materials)
+- PrusaLink against a real printer (only tested with the mock; auth and firmware behaviour unconfirmed)
+- UWA-approved G-code validation profiles and policy values
 - Pricing values
 - Cancellation/refund policy
 - Approval thresholds
