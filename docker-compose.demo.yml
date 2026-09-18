@@ -45,8 +45,8 @@ services:
       # Fake auth forgets logins on every restart, so these are re-created at startup
       # (matching any profile already in the database). Format: email:password:role,...
       # Override with your own in a .env file next to this one, e.g.
-      #   DEMO_ACCOUNTS=12345678@student.uwa.edu.au:my-password:student,00000001@student.uwa.edu.au:demo-password-1:admin
-      DEMO_ACCOUNTS: "${DEMO_ACCOUNTS:-00000001@student.uwa.edu.au:demo-password-1:admin,00000002@student.uwa.edu.au:demo-password-1:student}"
+      #   DEMO_ACCOUNTS=12345678@student.uwa.edu.au:my-password:student,farmer.demo@uwa.edu.au:demo-password-1:farmer,00000001@student.uwa.edu.au:demo-password-1:admin
+      DEMO_ACCOUNTS: "${DEMO_ACCOUNTS:-00000001@student.uwa.edu.au:demo-password-1:admin,00000002@student.uwa.edu.au:demo-password-1:student,farmer.demo@uwa.edu.au:demo-password-1:farmer}"
 
 volumes:
   demo-db:

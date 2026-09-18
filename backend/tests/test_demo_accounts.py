@@ -77,3 +77,15 @@ def test_seeding_twice_is_harmless(db_session: Session, auth_adapter: FakeAuthAd
     assert seed_demo_accounts(db_session, auth_adapter, accounts) == []
     user = db_session.scalars(select(User)).one()
     assert user.role is UserRole.FARMER and user.student_number is None  # non-student email
+
+
+def test_farmer_with_a_staff_email_can_sign_in(
+    auth_client: TestClient, db_session: Session, auth_adapter: FakeAuthAdapter
+) -> None:
+    seed_demo_accounts(
+        db_session, auth_adapter, parse_demo_accounts("farmer.demo@uwa.edu.au:secret-3:farmer")
+    )
+    resp = auth_client.post("/api/auth/signin", json={"email": "farmer.demo@uwa.edu.au", "password": "secret-3"})
+    assert resp.status_code == 200
+    assert resp.json()["user"]["role"] == "farmer"
+    assert resp.json()["user"]["student_number"] is None
