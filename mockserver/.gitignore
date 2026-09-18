@@ -1,0 +1,7 @@
+__pycache__/
+.pytest_cache/
+.venv/
+# Runtime downloads written by the simulator; keep only the directory.
+storage/*
+!storage/.gitkeep
+*.Identifier

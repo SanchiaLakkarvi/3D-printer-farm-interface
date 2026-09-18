@@ -1,0 +1,10 @@
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+pydantic>=2.8,<3
+PyYAML>=6,<7
+# pybgcode is built by the official libbgcode repository but is not published
+# on PyPI. Pin the source commit so BGCode validation builds reproducibly.
+pybgcode @ git+https://github.com/prusa3d/libbgcode.git@d4da9073616d70a43c151e8c1d7fbff879d2e08a
+# Use the required Prusa SDK directly from the official repository.
+prusa.connect.sdk.printer @ git+https://github.com/prusa3d/Prusa-Connect-SDK-Printer.git@24f7f5f90838ffdcb5a0d118ec9a66a22ac3d769
+pytest>=8,<9
