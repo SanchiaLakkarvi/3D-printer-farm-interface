@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -uo pipefail
+export PYTHONIOENCODING=utf-8
 
 VALIDATION_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$VALIDATION_DIR/.." && pwd)"
@@ -7,19 +8,29 @@ TEST_FILE="$VALIDATION_DIR/tests/test_gcode_validator.py"
 VALIDATOR="$VALIDATION_DIR/gcode_validator.py"
 DATA_DIR="$VALIDATION_DIR/data"
 
-# Prefer the repository virtual environment.
-if [[ -x "$REPO_ROOT/.venv/bin/python" ]]; then
-    PYTHON_BIN="$REPO_ROOT/.venv/bin/python"
-elif [[ -x "$REPO_ROOT/.venv/Scripts/python.exe" ]]; then
-    PYTHON_BIN="$REPO_ROOT/.venv/Scripts/python.exe"
-elif command -v python3 >/dev/null 2>&1; then
-    PYTHON_BIN="$(command -v python3)"
-elif command -v python >/dev/null 2>&1; then
-    PYTHON_BIN="$(command -v python)"
-elif command -v py >/dev/null 2>&1; then
-    PYTHON_BIN="$(command -v py)"
+# Probe interpreters: Windows Store aliases may exist but cannot run Python.
+python_works() {
+    "$1" -c 'import sys; sys.exit(sys.version_info < (3, 10))' >/dev/null 2>&1
+}
+
+if [[ -n "${PYTHON_BIN:-}" ]]; then
+    if ! python_works "$PYTHON_BIN"; then
+        echo "ERROR: PYTHON_BIN must point to a working Python 3.10+ interpreter."
+        exit 1
+    fi
 else
-    echo "ERROR: Python was not found."
+    PYTHON_BIN=""
+    for candidate in "$REPO_ROOT/.venv/bin/python" \
+        "$REPO_ROOT/.venv/Scripts/python.exe" python3 python py; do
+        if python_works "$candidate"; then
+            PYTHON_BIN="$candidate"
+            break
+        fi
+    done
+fi
+
+if [[ -z "$PYTHON_BIN" ]]; then
+    echo "ERROR: Python 3.10+ was not found. Set PYTHON_BIN to its executable path."
     exit 1
 fi
 
@@ -166,6 +177,13 @@ echo "========================================"
 run_case \
     "VALID CORE ONE" \
     "$DATA_DIR/Rook1_0.4n_0.15mm_PLA_COREONE_1h5m.gcode" \
+    "PASS" \
+    "" \
+    "core_one_hf04"
+
+run_case \
+    "VALID BINARY CORE ONE" \
+    "$DATA_DIR/Rook1_0.4n_0.15mm_PLA_COREONE_1h5m.bgcode" \
     "PASS" \
     "" \
     "core_one_hf04"
