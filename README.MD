@@ -97,20 +97,18 @@ Published URLs:
 | http://localhost:8080/prusalink/mock-coreone-01/api/v1/status | Mock CORE One, PrusaLink API (Digest auth: `maker` / `mock-core-token`) |
 | http://localhost:8080/prusalink/mock-xl-01/api/v1/status | Mock XL, PrusaLink API (Digest auth: `maker` / `mock-xl-token`) |
 
-The demo file overrides the backend to use `AUTH_ADAPTER=fake`, applies migrations and seeds two printers and three materials on boot (`RUN_MIGRATIONS=1`, `RUN_SEED=1`), and turns on the printer poller (`PRINTER_POLL_INTERVAL_S=2`). Do not use it against the shared Supabase database.
+The demo file overrides the backend to use `AUTH_ADAPTER=fake` (accounts are seeded on each start), applies migrations and seeds two printers and three materials on boot (`RUN_MIGRATIONS=1`, `RUN_SEED=1`), and turns on the printer poller (`PRINTER_POLL_INTERVAL_S=2`). Do not use it against the shared Supabase database.
 
-**Create a demo student.** With the fake Auth adapter no email is sent, so confirm the account through the API. Accounts live in memory and disappear when the backend restarts.
+**Log in.** With the fake Auth adapter no email is sent, so the demo creates its accounts itself on every backend start (`DEMO_ACCOUNTS` in `docker-compose.demo.yml`):
 
-1. In the UI choose **Student**, then **Create a student account**.
-2. Confirm it (use your email, lower case):
+| Role | Card | Email | Password |
+|---|---|---|---|
+| Student | Student | `00000002@student.uwa.edu.au` | `demo-password-1` |
+| Admin | Administrator | `00000001@student.uwa.edu.au` | `demo-password-1` |
 
-```bash
-curl -X POST http://localhost:8000/api/auth/confirm-email \
-  -H 'content-type: application/json' \
-  -d '{"token_hash":"confirm-you@student.uwa.edu.au","type":"signup"}'
-```
+To use your own email, put `DEMO_ACCOUNTS=email:password:role,...` in a `.env` file at the repository root (roles: `student`, `farmer`, `admin`; no commas or colons in passwords) and run `docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d backend`. Existing profiles and job history are reused.
 
-3. Sign in, open **Upload file**, choose `raw/Rook1_0.4n_0.15mm_PLA_COREONE_1h5m.gcode`, pick **PLA White** and submit. The job starts on the mock CORE One within a few seconds. The mock runs 60x faster than real time, so this 1 h 5 m print finishes in about a minute. Then check **My jobs**.
+Then sign in, open **Upload file**, choose `raw/Rook1_0.4n_0.15mm_PLA_COREONE_1h5m.gcode`, pick **PLA White** and submit. The job starts on the mock CORE One within a few seconds. The mock runs 60x faster than real time, so this 1 h 5 m print finishes in about a minute. Then check **My jobs**.
 
 The mock printers need Docker on macOS: the Prusa SDK they are built on relies on Linux `inotify`. Its logs repeat `host.docker.internal:9000 ... Connection refused`; that is the mock's legacy Connect transport and is harmless. Details: [`mockserver/README.md`](mockserver/README.md).
 
