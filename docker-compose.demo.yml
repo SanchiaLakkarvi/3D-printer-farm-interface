@@ -1,0 +1,47 @@
+# Local demo: UI + API + mock printers + a throwaway Postgres. No Supabase needed.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+#
+# Layers on top of docker-compose.yml (same ports: UI 5173, API 8000) and adds the
+# mock printers on 8080. Auth is the in-memory fake adapter, so accounts disappear
+# when the backend restarts. Never point this at a shared database.
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: printfarm
+      POSTGRES_PASSWORD: printfarm
+      POSTGRES_DB: printfarm
+    volumes:
+      - demo-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U printfarm -d printfarm"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  mockserver:
+    build:
+      context: ./mockserver
+    ports:
+      - "8080:8080"
+
+  backend:
+    depends_on:
+      db:
+        condition: service_healthy
+      mockserver:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+psycopg://printfarm:printfarm@db:5432/printfarm
+      AUTH_ADAPTER: fake
+      RUN_MIGRATIONS: "1"
+      RUN_SEED: "1"
+      # Backend reaches the mock over the Compose network; each printer's own
+      # /prusalink/<id> path is added by the seed script.
+      MOCK_PRINTER_BASE_URL: http://mockserver:8080
+      PRINTER_POLL_INTERVAL_S: "2"
+
+volumes:
+  demo-db:
