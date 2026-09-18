@@ -30,6 +30,7 @@ class QueueTileResponse(BaseModel):
     est_duration_formatted: str
     est_start_time: datetime | None = None
     est_completion_time: datetime | None = None
+    duration_is_default: bool = False
     submitted_at: datetime
 
 
@@ -88,3 +89,4 @@ class FarmStatisticsResponse(BaseModel):
     printer_stats: list[PrinterUtilStat]
     material_stats: list[MaterialUtilStat]
     department_stats: list[DepartmentUtilStat]
+

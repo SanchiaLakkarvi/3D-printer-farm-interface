@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import os
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.enums import JobStatus, UserRole
+from app.models.enums import JobStatus, PrinterStatus, UserRole
 from app.models.material import Material
 from app.models.print_job import PrintJob
 from app.models.printer import Printer
@@ -45,43 +46,100 @@ def _make_aware(dt: datetime) -> datetime:
     return dt
 
 
-def get_print_queue(db: Session, user: User | None = None) -> list[QueueTileResponse]:
-    """Return active queue and completion tiles with estimated start/completion times."""
-    query = (
-        select(PrintJob)
-        .options(
-            joinedload(PrintJob.printer).joinedload(Printer.current_material),
-            joinedload(PrintJob.material),
-        )
-        .where(
-            PrintJob.status.in_(
-                [JobStatus.SUBMITTED, JobStatus.QUEUED, JobStatus.PRINTING]
-            )
-        )
-        .order_by(PrintJob.submitted_at.asc())
+DEFAULT_DURATION_MIN = 30.0
+OVERRUN_GRACE_MIN = 5.0
+_UNASSIGNABLE_STATUSES = frozenset(
+    {PrinterStatus.ERROR, PrinterStatus.OFFLINE, PrinterStatus.MAINTENANCE}
+)
+
+
+def _duration_of(job: PrintJob) -> float:
+    return job.est_duration_min if job.est_duration_min else DEFAULT_DURATION_MIN
+
+
+def compute_queue_schedule(
+    jobs: list[PrintJob],
+    printers: list[Printer],
+    now: datetime,
+) -> dict[uuid.UUID, tuple[datetime, datetime, uuid.UUID | None]]:
+    """Estimate (start, completion, printer) for every active job, per printer.
+
+    Printing jobs run from their real start. Waiting jobs are first-come,
+    first-served: a job with a printer follows that printer's queue, and an
+    unassigned job takes whichever available printer frees up first.
+    """
+    free_at = {p.id: now for p in printers}
+    assignable = [p.id for p in printers if p.status not in _UNASSIGNABLE_STATUSES]
+    schedule: dict[uuid.UUID, tuple[datetime, datetime, uuid.UUID | None]] = {}
+
+    for job in jobs:
+        if job.status != JobStatus.PRINTING:
+            continue
+        start = _make_aware(job.started_at or job.submitted_at)
+        completion = start + timedelta(minutes=_duration_of(job))
+        if completion < now:
+            completion = now + timedelta(minutes=OVERRUN_GRACE_MIN)
+        schedule[job.id] = (start, completion, job.printer_id)
+        if job.printer_id in free_at:
+            free_at[job.printer_id] = max(free_at[job.printer_id], completion)
+
+    waiting = sorted(
+        (j for j in jobs if j.status != JobStatus.PRINTING),
+        key=lambda j: _make_aware(j.submitted_at),
     )
+    for job in waiting:
+        printer_id = job.printer_id
+        if printer_id is None and assignable:
+            printer_id = min(assignable, key=lambda pid: free_at[pid])
+        if printer_id is None or printer_id not in free_at:
+            continue
+        start = free_at[printer_id]
+        completion = start + timedelta(minutes=_duration_of(job))
+        free_at[printer_id] = completion
+        schedule[job.id] = (start, completion, job.printer_id)
 
+    return schedule
+
+
+def refresh_queue_estimates(db: Session) -> list[PrintJob]:
+    """Recompute and persist estimates for all active jobs; return them oldest first."""
+    jobs = list(
+        db.scalars(
+            select(PrintJob)
+            .options(
+                joinedload(PrintJob.printer).joinedload(Printer.current_material),
+                joinedload(PrintJob.material),
+            )
+            .where(
+                PrintJob.status.in_(
+                    [JobStatus.SUBMITTED, JobStatus.QUEUED, JobStatus.PRINTING]
+                )
+            )
+            .order_by(PrintJob.submitted_at.asc())
+        ).unique()
+    )
+    printers = list(db.scalars(select(Printer)))
+    schedule = compute_queue_schedule(jobs, printers, datetime.now(timezone.utc))
+    for job in jobs:
+        start, completion, _ = schedule.get(job.id, (None, None, None))
+        job.est_start_at = start
+        job.est_completion_at = completion
+    db.commit()
+    return jobs
+
+
+def get_print_queue(db: Session, user: User | None = None) -> list[QueueTileResponse]:
+    """Return the active queue with per-printer estimated start/completion times.
+
+    Estimates are computed over the whole farm so a student's own jobs still
+    account for everyone ahead of them; only the output is filtered by role.
+    """
+    jobs = refresh_queue_estimates(db)
     if user is not None and user.role == UserRole.STUDENT:
-        query = query.where(PrintJob.user_id == user.id)
-
-    jobs = list(db.scalars(query).unique())
-    now = datetime.now(timezone.utc)
-    cumulative_wait_minutes = 0.0
+        jobs = [j for j in jobs if j.user_id == user.id]
 
     responses: list[QueueTileResponse] = []
     for job in jobs:
-        est_min = job.est_duration_min or 30.0
-
-        if job.status == JobStatus.PRINTING:
-            est_start = _make_aware(job.submitted_at)
-            est_completion = est_start + timedelta(minutes=est_min)
-            if est_completion < now:
-                est_completion = now + timedelta(minutes=5)
-        else:
-            est_start = now + timedelta(minutes=cumulative_wait_minutes)
-            est_completion = est_start + timedelta(minutes=est_min)
-            cumulative_wait_minutes += est_min
-
         printer_summary = None
         if job.printer is not None:
             printer_summary = PrinterAssignedSummary(
@@ -101,8 +159,9 @@ def get_print_queue(db: Session, user: User | None = None) -> list[QueueTileResp
                 assigned_printer=printer_summary,
                 est_duration_min=job.est_duration_min,
                 est_duration_formatted=_format_duration(job.est_duration_min),
-                est_start_time=est_start,
-                est_completion_time=est_completion,
+                est_start_time=job.est_start_at,
+                est_completion_time=job.est_completion_at,
+                duration_is_default=not job.est_duration_min,
                 submitted_at=job.submitted_at,
             )
         )
@@ -270,3 +329,4 @@ def get_farm_statistics(db: Session) -> FarmStatisticsResponse:
         material_stats=material_stats,
         department_stats=department_stats,
     )
+
