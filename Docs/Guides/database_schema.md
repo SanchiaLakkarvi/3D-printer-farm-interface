@@ -69,12 +69,12 @@ Credentials and sessions live in Supabase Auth; this table does not store passwo
 | `id` | `uuid` PK | |
 | `user_id` | `uuid` FK → `users.id` | |
 | `printer_id` | `uuid` FK → `printers.id` | Nullable until assigned |
-| `material_id` | `uuid` FK → `materials.id` | |
-| `gcode_path` | `string` | Path/reference to uploaded file |
-| `status` | `enum` | `submitted`, `queued`, `printing`, `completed`, `failed`, `removed`, `ready_for_collection` |
-| `queue_position` | `int` | Scoped per compatible printer/printer group (see note below) |
-| `est_duration_min` | `float` | Extracted from G-code metadata |
-| `est_filament_g` | `float` | Extracted from G-code metadata |
+| `material_id` | `uuid` FK → `materials.id` | Nullable at upload; set when validation/selection provides it |
+| `gcode_path` | `string` | Relative storage key under `FILE_STORAGE_ROOT` (`{user_id}/{job_id}.gcode` or `.gco`); never a client path |
+| `original_filename` | `string`, nullable | Client basename for display only |
+| `status` | `enum` | `pending_selection`, `submitted`, `queued`, `printing`, `completed`, `failed`, `removed`, `ready_for_collection`. Queue-eligible set is `submitted` + `queued` only (`pending_selection` is excluded) |
+| `est_duration_min` | `float` | Extracted from G-code metadata (later validation slice) |
+| `est_filament_g` | `float` | Extracted from G-code metadata (later validation slice) |
 | `actual_duration_min` | `float` | Recorded after completion |
 | `actual_filament_g` | `float` | Recorded after completion |
 | `department` | `string`, nullable | For usage/cost reporting by department (may differ from the user's profile department) |
@@ -149,6 +149,7 @@ Credentials and sessions live in Supabase Auth; this table does not store passwo
 - "Basic usage reporting" is better served by SQL views/aggregates over `print_jobs` + `materials` (e.g. `SUM(actual_duration_min) GROUP BY user_id`, `department`, `printer_id`) rather than a separate reporting table, to avoid data duplication and staleness.
 
 **Open issue to resolve as a team**
-`queue_position` on `print_jobs` is fine for MVP first-come-first-served, but the compatibility-aware queue rule (Section 3.4) means position should be scoped per printer-group, not global. Either:
-- add a `printer_group_id` and make ordering `(printer_group_id, queue_position)`, or
-- drop `queue_position` entirely and compute ordering on the fly from `submitted_at`, filtered to compatible printers — this avoids race conditions when jobs are reordered as printers free up.
+FCFS queue ordering uses `submitted_at` filtered to compatible printers (and the
+partial index on `status IN ('submitted', 'queued')`). `queue_position` was
+dropped in Alembic `0002` — do not reintroduce a global position column without
+an explicit decision on printer-group scoping.
