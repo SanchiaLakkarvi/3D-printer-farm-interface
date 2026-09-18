@@ -81,6 +81,40 @@ The validator looks for `BGCODE_BIN` (when explicitly set), then `bgcode` on
 An invalid explicit `BGCODE_BIN` is an error, rather than a fallback to another
 converter. Paths containing spaces are supported.
 
+#### macOS (Intel or Apple Silicon)
+
+Build the converter on the Mac that will run validation; no Windows or WSL
+installation is needed. Use a native Terminal session for your Mac's architecture.
+
+Install [Apple's Command Line Tools](https://developer.apple.com/documentation/xcode/installing-the-command-line-tools/)
+if they are not already installed, and wait for the installer to finish:
+
+```bash
+xcode-select --install
+```
+
+You also need Python 3.10+. If you use Homebrew, `brew install python` provides
+[Python](https://formulae.brew.sh/formula/python@3.14). Then, from the repository
+root, install CMake in an isolated build environment and run the native setup:
+
+```bash
+python3 -m venv validation/.tools/build-env
+validation/.tools/build-env/bin/python -m pip install "cmake==3.31.10"
+PATH="$PWD/validation/.tools/build-env/bin:$PATH" bash validation/setup_bgcode.sh
+PYTHON_BIN="$PWD/validation/.tools/build-env/bin/python" bash validation/test_validation.sh
+```
+
+[CMake 3.31.10](https://pypi.org/project/cmake/3.31.10/) supplies Intel and Apple
+Silicon wheels. Pinning CMake 3.x avoids compatibility errors in the older
+upstream dependency build files with CMake 4. The build environment and converter
+remain local and ignored by Git. Subsequent test runs only need the last command.
+Do not use `--windows` or copy a Linux/Windows converter onto the Mac.
+
+The macOS setup is documented and the script accommodates bundled Bash 3.2,
+but the complete build and test suite have not yet been run on a Mac.
+
+#### Linux and WSL
+
 **WSL is a Linux validation environment.** A converter built with `--windows`
 provides `bgcode.exe` for Windows Python only. WSL's Linux Python needs the native
 `bgcode` executable. Both can coexist in `validation/.tools/bin/`; the validator

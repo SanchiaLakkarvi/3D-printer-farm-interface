@@ -6,7 +6,8 @@ TOOLS_DIR="$VALIDATION_DIR/.tools"
 SOURCE_DIR="$TOOLS_DIR/libbgcode"
 # Pin the official source so every setup uses the same converter.
 REVISION="d4da9073616d70a43c151e8c1d7fbff879d2e08a"
-CMAKE_ARGS=()
+# Keep this array non-empty for macOS's bundled Bash 3.2 with `set -u`.
+CMAKE_ARGS=(-DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF)
 BUILD_NAME="native"
 
 if [[ "${1:-}" == "--windows" ]]; then
@@ -45,7 +46,6 @@ DEPS_PREFIX="$DEPS_DIR/install"
 
 # Only build dependencies needed by the CLI, using upstream's checksum-pinned downloads.
 cmake -S "$SOURCE_DIR/deps" -B "$DEPS_DIR" "${CMAKE_ARGS[@]}" \
-    -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
     -DLibBGCode_Deps_SELECT_ALL=OFF \
     -DLibBGCode_Deps_BUILD_Boost=ON \
     -DLibBGCode_Deps_BUILD_heatshrink=ON \
@@ -56,7 +56,6 @@ cmake -S "$SOURCE_DIR/deps" -B "$DEPS_DIR" "${CMAKE_ARGS[@]}" \
 cmake --build "$DEPS_DIR" --config Release --parallel 2
 
 cmake -S "$SOURCE_DIR" -B "$BUILD_DIR/libbgcode" "${CMAKE_ARGS[@]}" \
-    -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
     -DLibBGCode_BUILD_TESTS=OFF \
     "-DCMAKE_PREFIX_PATH=$DEPS_PREFIX" \
     "-DCMAKE_INSTALL_PREFIX=$TOOLS_DIR"
