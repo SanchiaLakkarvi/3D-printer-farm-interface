@@ -10,6 +10,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from app.monitor import install_monitor
 from app.prusalink import USERNAME, build_router
 
 
@@ -81,6 +82,7 @@ def env(tmp_path: Path):
     worker = StubWorker(tmp_path)
     app = FastAPI()
     app.include_router(build_router(StubManager(worker)))
+    install_monitor(app)
     client = TestClient(app, base_url="http://mock", follow_redirects=False)
     auth = httpx.DigestAuth(USERNAME, "secret-token")
     return client, worker, auth, "/prusalink/mock-1"
@@ -166,3 +168,30 @@ def test_rejects_unknown_storage_and_path_traversal(env) -> None:
     client, _, auth, base = env
     assert client.put(f"{base}/api/v1/files/sdcard/a.gcode", content=b"x", auth=auth).status_code == 404
     assert client.put(f"{base}/api/v1/files/usb/../../evil.gcode", content=b"x", auth=auth).status_code in (400, 404)
+
+
+def test_monitor_counts_polls_and_logins_but_lists_real_actions(env) -> None:
+    client, _, auth, base = env
+    client.get(f"{base}/api/v1/status", auth=auth)  # 401 challenge, then 200
+    client.get(f"{base}/api/v1/status", auth=auth)
+    seen = client.get("/control/requests").json()
+    assert seen["polls"]["mock-1"]["count"] == 2
+    assert seen["handshakes"] >= 1  # a reused client logs in once
+    assert seen["events"] == []  # polling is counted, not listed
+
+    client.put(f"{base}/api/v1/files/usb/job.gcode", content=b"G28\n" * 300,
+               headers={"Print-After-Upload": "?1"}, auth=auth)
+    job = client.get(f"{base}/api/v1/job", auth=auth).json()["id"]
+    client.delete(f"{base}/api/v1/job/{job}", auth=auth)
+
+    events = client.get("/control/requests").json()["events"]
+    assert [e["action"].split(" (")[0] for e in events] == ["Stop job", "Upload job.gcode"]  # newest first
+    assert events[1]["action"].endswith("and START PRINT") and "KB" in events[1]["action"]
+    assert all(e["printer"] == "mock-1" and e["status"] < 300 for e in events)
+
+
+def test_monitor_page_is_served(env) -> None:
+    client, *_ = env
+    page = client.get("/monitor")
+    assert page.status_code == 200 and "text/html" in page.headers["content-type"]
+    assert "/control/requests" in page.text

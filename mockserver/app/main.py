@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException
 
 from .config import load_config
 from .manager import PrinterManager
+from .monitor import install_monitor
 from .prusalink import build_router as build_prusalink_router
 from .models import ConsumableUpdate, FaultRequest, PrinterStatus, ValidationResult
 
@@ -34,6 +35,7 @@ app = FastAPI(
 
 
 app.include_router(build_prusalink_router(manager))
+install_monitor(app)
 
 
 @app.get("/health")
