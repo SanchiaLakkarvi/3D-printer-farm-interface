@@ -81,15 +81,27 @@ The validator looks for `BGCODE_BIN` (when explicitly set), then `bgcode` on
 An invalid explicit `BGCODE_BIN` is an error, rather than a fallback to another
 converter. Paths containing spaces are supported.
 
-To build the official converter locally on Linux, install Git, CMake 3.x (3.22 or newer),
-Make, and a C++17 compiler, then run:
+**WSL is a Linux validation environment.** A converter built with `--windows`
+provides `bgcode.exe` for Windows Python only. WSL's Linux Python needs the native
+`bgcode` executable. Both can coexist in `validation/.tools/bin/`; the validator
+selects the one for the running Python platform. The runner likewise selects
+that platform's virtual environment.
+
+To build and test in **WSL Ubuntu**, run these commands in the repository directory:
 
 ```bash
-bash validation/setup_bgcode.sh
+sudo apt-get update
+sudo apt-get install -y git cmake build-essential
+BGCODE_BUILD_DIR="$HOME/.cache/uwa-bgcode-linux" bash validation/setup_bgcode.sh
+bash validation/test_validation.sh
 ```
 
-For Windows, the following WSL Ubuntu commands build a native, self-contained
-Windows executable. Run them in the repository directory in WSL:
+On other Linux systems, install Git, CMake 3.x (3.22 or newer), Make, and a C++17
+compiler, then run `bash validation/setup_bgcode.sh` followed by the test runner.
+
+For **Git Bash with Windows Python**, the following WSL Ubuntu commands build a
+native, self-contained Windows executable. These commands do **not** install the
+Linux converter needed for tests inside WSL:
 
 ```bash
 sudo apt-get update
@@ -118,3 +130,14 @@ If you already have an official converter elsewhere, no local build is needed:
 ```bash
 BGCODE_BIN="/path/to/bgcode" bash validation/test_validation.sh
 ```
+
+### If the runner reports two failed groups in WSL
+
+Check the errors for the real binary unit test and `VALID BINARY CORE ONE` sample.
+If both report a missing Prusa converter, they are the same missing dependency
+reported twice. Run the WSL setup above **without `--windows`**, then rerun the
+suite. If `BGCODE_BIN` is set, it must point to a Linux executable when using
+Linux Python; use `unset BGCODE_BIN` to restore automatic discovery.
+
+Generated converters are not committed to Git, so a new checkout needs setup
+even if another machine has passed the complete test suite.

@@ -8,6 +8,12 @@ TEST_FILE="$VALIDATION_DIR/tests/test_gcode_validator.py"
 VALIDATOR="$VALIDATION_DIR/gcode_validator.py"
 DATA_DIR="$VALIDATION_DIR/data"
 
+# WSL runs Linux Python even when it shares a checkout with Windows.
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) VENV_PYTHON="$REPO_ROOT/.venv/Scripts/python.exe" ;;
+    *) VENV_PYTHON="$REPO_ROOT/.venv/bin/python" ;;
+esac
+
 # Probe interpreters: Windows Store aliases may exist but cannot run Python.
 python_works() {
     "$1" -c 'import sys; sys.exit(sys.version_info < (3, 10))' >/dev/null 2>&1
@@ -20,8 +26,7 @@ if [[ -n "${PYTHON_BIN:-}" ]]; then
     fi
 else
     PYTHON_BIN=""
-    for candidate in "$REPO_ROOT/.venv/bin/python" \
-        "$REPO_ROOT/.venv/Scripts/python.exe" python3 python py; do
+    for candidate in "$VENV_PYTHON" python3 python py; do
         if python_works "$candidate"; then
             PYTHON_BIN="$candidate"
             break

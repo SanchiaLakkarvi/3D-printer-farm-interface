@@ -64,4 +64,9 @@ cmake --build "$BUILD_DIR/libbgcode" --config Release --parallel 2
 cmake --install "$BUILD_DIR/libbgcode" --config Release
 
 echo "Installed the official Prusa converter in $TOOLS_DIR/bin."
-echo "Run bash validation/test_validation.sh in the target platform's shell."
+if [[ "$BUILD_NAME" == "windows" ]]; then
+    echo "This is a Windows executable: run tests in Git Bash with Windows Python."
+    echo "For tests in WSL, also run this setup without --windows to build the Linux converter."
+else
+    echo "Run bash validation/test_validation.sh on the platform used for this build."
+fi
