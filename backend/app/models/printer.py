@@ -39,6 +39,10 @@ class Printer(Base):
         nullable=True,
     )
     location: Mapped[str] = mapped_column(Text, nullable=False)
+    # PrusaLink connection. Kept out of PrinterOut so credentials never reach clients.
+    prusalink_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    prusalink_username: Mapped[str | None] = mapped_column(Text, nullable=True)
+    prusalink_password: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     current_material: Mapped[Material | None] = relationship(back_populates="printers")
     print_jobs: Mapped[list[PrintJob]] = relationship(back_populates="printer")

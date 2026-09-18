@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     max_upload_bytes: int = 50 * 1024 * 1024  # 50 MB
 
     printer_adapter: str = "mock"
+    # Seconds between printer syncs; 0 disables the background poller.
+    printer_poll_interval_s: float = 0.0
     mock_printer_base_url: str = "http://localhost:8080"
 
     @property

@@ -87,3 +87,6 @@ class PrusaLinkAdapter:
 
     def stop_job(self, job_id: int) -> None:
         self._request("DELETE", f"/api/v1/job/{job_id}")
+
+    def close(self) -> None:
+        self._client.close()

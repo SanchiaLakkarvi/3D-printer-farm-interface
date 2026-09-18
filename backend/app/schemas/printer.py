@@ -18,6 +18,9 @@ class PrinterCreate(BaseModel):
     status: PrinterStatus = PrinterStatus.IDLE
     locked_profile: dict[str, Any] | None = None
     current_material_id: uuid.UUID | None = None
+    prusalink_url: str | None = None
+    prusalink_username: str | None = None
+    prusalink_password: str | None = None
 
 
 class PrinterUpdate(BaseModel):
@@ -25,6 +28,9 @@ class PrinterUpdate(BaseModel):
     location: str | None = None
     locked_profile: dict[str, Any] | None = None
     current_material_id: uuid.UUID | None = None
+    prusalink_url: str | None = None
+    prusalink_username: str | None = None
+    prusalink_password: str | None = None
 
 
 class PrinterOut(BaseModel):

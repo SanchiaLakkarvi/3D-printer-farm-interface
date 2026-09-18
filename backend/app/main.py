@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -7,13 +9,32 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
 from app.core.config import settings
+from app.services.printer_sync_service import sync_all_printers
+
+log = logging.getLogger(__name__)
+
+
+async def _poll_printers(interval_s: float) -> None:
+    while True:
+        try:
+            await asyncio.to_thread(sync_all_printers)
+        except Exception:
+            log.exception("Printer sync cycle failed")
+        await asyncio.sleep(interval_s)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application startup and shutdown lifecycle."""
     del app
-    yield
+    poller = None
+    if settings.printer_poll_interval_s > 0:
+        poller = asyncio.create_task(_poll_printers(settings.printer_poll_interval_s))
+    try:
+        yield
+    finally:
+        if poller is not None:
+            poller.cancel()
 
 
 app = FastAPI(
