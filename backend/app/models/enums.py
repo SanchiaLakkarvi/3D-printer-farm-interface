@@ -22,6 +22,7 @@ class PrinterStatus(str, enum.Enum):
 
 
 class JobStatus(str, enum.Enum):
+    PENDING_SELECTION = "pending_selection"
     SUBMITTED = "submitted"
     QUEUED = "queued"
     PRINTING = "printing"
