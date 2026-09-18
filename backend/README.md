@@ -114,7 +114,7 @@ stop with `docker compose down`.
 |---|---|---|---|
 | `POST` | `/api/jobs/upload` | Bearer + submit | Multipart field `file` (`.gcode` / `.gco`); creates Print Job in `pending_selection`; returns job id, status, original filename basename, relative `gcode_path` only |
 
-Storage layout: `{FILE_STORAGE_ROOT}/{user_id}/{job_id}.(gcode|gco)`. Client filename/path is never used for disk location. `material_id` / `printer_id` / estimates stay unset until later slices. Failed gate or persistence leaves no lasting job or orphan file. Full G-code content validation is deferred.
+Storage layout: `{FILE_STORAGE_ROOT}/{user_id}/{job_id}.(gcode|gco)`. Client filename/path is never used for disk location. `material_id` / `printer_id` / estimates stay unset until later slices. Gate rejects use structured codes (`INVALID_EXTENSION`, `FILE_TOO_LARGE`, `EMPTY_FILE`) and never create `pending_selection` jobs or write files. Write/DB failures return `UPLOAD_FAILED` after cleanup; responses never include absolute host paths or raw OS/DB errors. Full G-code content validation is deferred.
 
 ## Material and Printer endpoints
 
