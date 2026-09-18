@@ -86,7 +86,16 @@ def upload_gcode(
     job_id = uuid.uuid4()
     relative_key = storage_service.relative_storage_key(user.id, job_id, extension)
 
-    storage_service.write_bytes(relative_key, content, storage_root=root)
+    try:
+        storage_service.write_bytes(relative_key, content, storage_root=root)
+    except Exception:
+        # Best-effort cleanup if mkdir/write left partial artifacts; never leak OS paths.
+        storage_service.delete_if_exists(relative_key, storage_root=root)
+        raise AppError(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            code="UPLOAD_FAILED",
+            message="Upload could not be completed",
+        ) from None
 
     job = PrintJob(
         id=job_id,
