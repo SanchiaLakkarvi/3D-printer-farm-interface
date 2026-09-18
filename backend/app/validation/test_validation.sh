@@ -2,7 +2,7 @@
 set -uo pipefail
 
 VALIDATION_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$VALIDATION_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$VALIDATION_DIR/../../.." && pwd)"
 TEST_FILE="$VALIDATION_DIR/tests/test_gcode_validator.py"
 VALIDATOR="$VALIDATION_DIR/gcode_validator.py"
 DATA_DIR="$VALIDATION_DIR/data"

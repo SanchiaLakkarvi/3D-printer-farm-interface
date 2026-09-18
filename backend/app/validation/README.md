@@ -59,4 +59,4 @@ UPLOAD G-CODE
 The validation test suite can be run using the provided Bash script:
 
 ```bash
-bash validation/test_validation.sh
+bash backend/app/validation/test_validation.sh
