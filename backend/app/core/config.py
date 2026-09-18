@@ -21,6 +21,8 @@ class Settings(BaseSettings):
 
     # Auth: "fake" for tests/local without Supabase; "supabase" for real Auth.
     auth_adapter: str = "fake"
+    # Fake adapter only: accounts (re)created on every start. See services/demo_accounts.py.
+    demo_accounts: str = ""
     supabase_url: str = ""
     supabase_anon_key: str = ""
     supabase_service_role_key: str = ""
