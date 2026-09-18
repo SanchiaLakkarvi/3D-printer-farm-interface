@@ -272,6 +272,8 @@ User Collects Print
 
 The temporary G-code file should be deleted once the job has successfully completed, been removed, and no longer requires retrying. If a print fails, the file may be retained temporarily so that the operator or administrator can restart the job without requiring the user to upload it again.
 
+**Ownership:** that retention/delete rule belongs to the **job lifecycle / collection** slice — not to `POST /api/jobs/upload`. Upload only cleans up on its own gate/write/commit (and future #3 validation) failures.
+
 ---
 
 ## 7. G-code Validation

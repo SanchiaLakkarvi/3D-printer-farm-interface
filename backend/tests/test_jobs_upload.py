@@ -371,6 +371,46 @@ def test_upload_write_failure_cleans_up_no_job(
     _assert_no_files(storage_root)
 
 
+def test_upload_content_validation_hook_failure_cleans_up(
+    auth_client: TestClient,
+    db_session: Session,
+    auth_adapter: FakeAuthAdapter,
+    storage_root: Path,
+) -> None:
+    """#3 hook reject must leave no lasting job/file (validate-then-commit)."""
+    from app.core.exceptions import BadRequestError
+
+    _seed_profile(
+        db_session=db_session,
+        auth_adapter=auth_adapter,
+        email=STUDENT_EMAIL,
+        password=STUDENT_PASSWORD,
+        role=UserRole.STUDENT,
+    )
+    token = _token(auth_client, STUDENT_EMAIL, STUDENT_PASSWORD)
+
+    with patch(
+        "app.services.upload_service.run_content_validation_hook",
+        side_effect=BadRequestError(
+            code="GCODE_INVALID",
+            message="Binary G-code is not accepted",
+        ),
+    ):
+        response = auth_client.post(
+            "/api/jobs/upload",
+            headers={"Authorization": f"Bearer {token}"},
+            files={"file": ("hook-fail.gcode", SAMPLE_GCODE, "application/octet-stream")},
+        )
+
+    assert response.status_code == 400
+    detail = response.json()["detail"]
+    assert detail["code"] == "GCODE_INVALID"
+    assert "binary" in detail["message"].lower()
+    _assert_safe_error_payload(response, storage_root=storage_root)
+    _assert_no_jobs(db_session)
+    _assert_no_files(storage_root)
+
+
 def test_upload_db_failure_cleans_up_file(
     auth_client: TestClient,
     db_session: Session,

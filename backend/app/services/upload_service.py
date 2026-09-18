@@ -1,8 +1,9 @@
 """G-code upload application service.
 
 Narrow safe-upload gate (extension + size) → server-owned storage write →
-Print Job in ``pending_selection``. Full G-code validation is owned by a
-later slice; this module leaves a clear hook for it.
+``run_content_validation_hook`` (slice #3; no-op today) → Print Job in
+``pending_selection``. Retention/delete-on-collect is owned by the lifecycle
+slice, not this module.
 """
 
 from __future__ import annotations
@@ -63,6 +64,30 @@ def _read_within_limit(upload: UploadFile, max_bytes: int) -> bytes:
     return b"".join(chunks)
 
 
+def run_content_validation_hook(
+    *,
+    relative_key: str,
+    content: bytes,
+    storage_root: str,
+) -> None:
+    """Slice #3 hook: G-code content validation after the local gate.
+
+    Called once the file exists at ``relative_key`` under ``storage_root`` and
+    **before** the Print Job row is committed (validate-then-commit).
+
+    When the validation slice lands, replace this no-op with parse/validate that
+    reads the stored path (via ``storage_service`` / ``relative_key``) and/or
+    ``content``. On failure raise ``BadRequestError`` (or another ``AppError``);
+    the caller deletes the file and leaves no lasting job. On success, optionally
+    return metadata for estimates / ``job_validations`` / ``material_id`` without
+    renaming status to a dishonest ``validated``.
+
+    See ``Docs/specs/gcode-validation-duration-filament-parse-handoff.md``.
+    """
+    _ = (relative_key, content, storage_root)
+    return
+
+
 def upload_gcode(
     *,
     db: Session,
@@ -72,9 +97,10 @@ def upload_gcode(
 ) -> PrintJob:
     """Accept a multipart G-code upload and persist a pending_selection job.
 
-    Validation beyond the local gate (content/profile/material) is deferred.
-    When the validation slice lands, call it after the gate and before commit
-    (validate-then-commit); on failure, delete the file and do not leave a job.
+    Flow: local gate → write relative key → ``run_content_validation_hook`` (#3)
+    → commit job. Validation failure or commit failure cleans up the file and
+    leaves no lasting job. Retention/delete-on-collect is owned by the lifecycle
+    slice, not this function.
     """
     root = storage_root if storage_root is not None else settings.file_storage_root
     max_bytes = settings.max_upload_bytes
@@ -90,6 +116,23 @@ def upload_gcode(
         storage_service.write_bytes(relative_key, content, storage_root=root)
     except Exception:
         # Best-effort cleanup if mkdir/write left partial artifacts; never leak OS paths.
+        storage_service.delete_if_exists(relative_key, storage_root=root)
+        raise AppError(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            code="UPLOAD_FAILED",
+            message="Upload could not be completed",
+        ) from None
+
+    try:
+        run_content_validation_hook(
+            relative_key=relative_key,
+            content=content,
+            storage_root=root,
+        )
+    except AppError:
+        storage_service.delete_if_exists(relative_key, storage_root=root)
+        raise
+    except Exception:
         storage_service.delete_if_exists(relative_key, storage_root=root)
         raise AppError(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
