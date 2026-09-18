@@ -171,6 +171,15 @@ def test_error_states_fail_the_job_and_keep_the_file(world, state: PrinterState)
     assert printer.status is expected
 
 
+@pytest.mark.parametrize("state", [PrinterState.ERROR, PrinterState.ATTENTION])
+def test_faults_fail_the_job_immediately_even_right_after_start(world, state: PrinterState) -> None:
+    db, printer, make_job = world
+    job = make_job(JobStatus.PRINTING, started_at=NOW - timedelta(seconds=3))
+    sync_printer(db, printer, FakePort(state), NOW)
+    assert job.status is JobStatus.FAILED
+    assert printer.status is PrinterStatus.ERROR
+
+
 def test_idle_printer_that_lost_the_job_fails_it(world) -> None:
     db, printer, make_job = world
     job = make_job(JobStatus.PRINTING, started_at=NOW - timedelta(minutes=5))

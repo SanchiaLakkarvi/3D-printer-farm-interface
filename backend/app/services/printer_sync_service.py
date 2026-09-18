@@ -35,11 +35,11 @@ from app.models.printer import Printer
 log = logging.getLogger(__name__)
 
 # A printer keeps reporting FINISHED/STOPPED until cleared, so right after a job
-# starts those readings may belong to the previous job.
+# starts those readings may belong to the previous job. Faults are not delayed.
 START_GRACE = timedelta(seconds=15)
 
 _ACTIVE = {PrinterState.PRINTING, PrinterState.PAUSED}
-_FAILED = {PrinterState.ERROR, PrinterState.ATTENTION, PrinterState.STOPPED}
+_FAULT = {PrinterState.ERROR, PrinterState.ATTENTION}
 _READY_FOR_JOB = {PrinterState.IDLE, PrinterState.READY, PrinterState.FINISHED, PrinterState.STOPPED}
 
 
@@ -98,12 +98,16 @@ def _apply_active_job(db: Session, job: PrintJob, snap: PrinterSnapshot, now: da
 
     if snap.state in _ACTIVE:
         return
+    if snap.state in _FAULT:
+        # A printer in a fault state is never sent a new job, so this is genuine.
+        _finish(db, job, False, f"printer reported {snap.state.value}", now)
+        return
     if now - _aware(job.started_at or now) < START_GRACE:
-        return  # stale reading from the previous job
+        return  # FINISHED/STOPPED/idle may still be the previous job's reading
     if snap.state is PrinterState.FINISHED:
         _finish(db, job, True, "", now)
-    elif snap.state in _FAILED:
-        _finish(db, job, False, f"printer reported {snap.state.value}", now)
+    elif snap.state is PrinterState.STOPPED:
+        _finish(db, job, False, "printer reported STOPPED", now)
     elif snap.state in {PrinterState.IDLE, PrinterState.READY}:
         _finish(db, job, False, "printer no longer reports the job", now)
 
