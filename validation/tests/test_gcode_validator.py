@@ -270,6 +270,20 @@ class TestGCodeValidator(unittest.TestCase):
 
         print_match_result(result)
 
+    def test_real_missing_material_fails_stage_3(self) -> None:
+        result = validate_upload(DATA_DIR / "broken_no_material.gcode")
+
+        self.assertFalse(result["passed"], result)
+        self.assertEqual(result["failed_stage"], 3, result)
+        self.assertIn("filament_type", result["errors"][0])
+
+    def test_real_wrong_printer_fails_stage_4(self) -> None:
+        result = validate_upload(DATA_DIR / "broken_wrong_printer.gcode")
+
+        self.assertFalse(result["passed"], result)
+        self.assertEqual(result["failed_stage"], 4, result)
+        self.assertIn("M862.3", result["errors"][0])
+
     @unittest.skipUnless(
         shutil.which("bgcode") or shutil.which("bgcode.exe"),
         (
