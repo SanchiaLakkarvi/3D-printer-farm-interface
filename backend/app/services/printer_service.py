@@ -7,8 +7,10 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError
+from app.models.maintenance_log import MaintenanceLog
 from app.models.material import Material
+from app.models.print_job import PrintJob
 from app.models.printer import Printer
 from app.schemas.printer import PrinterCreate, PrinterUpdate
 
@@ -72,6 +74,32 @@ def update_printer(
     db.commit()
     db.refresh(printer)
     return get_printer(db, printer.id)
+
+
+def delete_printer(db: Session, printer_id: uuid.UUID) -> None:
+    """Delete printer by ID or raise 404 if not found or 409 if referenced."""
+    printer = get_printer(db, printer_id)
+
+    job_ref = db.scalar(
+        select(PrintJob.id).where(PrintJob.printer_id == printer_id).limit(1)
+    )
+    if job_ref is not None:
+        raise ConflictError(
+            f"Cannot delete printer {printer_id}: referenced by print jobs"
+        )
+
+    log_ref = db.scalar(
+        select(MaintenanceLog.id)
+        .where(MaintenanceLog.printer_id == printer_id)
+        .limit(1)
+    )
+    if log_ref is not None:
+        raise ConflictError(
+            f"Cannot delete printer {printer_id}: referenced by maintenance logs"
+        )
+
+    db.delete(printer)
+    db.commit()
 
 
 def _validate_material_exists(db: Session, material_id: uuid.UUID) -> None:

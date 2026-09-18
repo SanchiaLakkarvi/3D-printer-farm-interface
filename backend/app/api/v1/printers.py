@@ -59,3 +59,13 @@ def update_printer(
     """Update printer status, material, location, or locked profile. Admin only."""
     printer = printer_service.update_printer(db, printer_id, body)
     return PrinterOut.model_validate(printer)
+
+
+@router.delete("/{printer_id}", status_code=204)
+def delete_printer(
+    printer_id: uuid.UUID,
+    _admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[Session, Depends(get_db)],
+) -> None:
+    """Delete a printer by ID. Admin only."""
+    printer_service.delete_printer(db, printer_id)

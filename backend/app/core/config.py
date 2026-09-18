@@ -39,7 +39,20 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",")]
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def email_confirm_redirect_url(self) -> str | None:
+        """Where confirmation emails should send students (manual Confirm button page).
+
+        The Supabase Confirm signup template must link here with token_hash, e.g.
+        `{{ .SiteURL }}/?token_hash={{ .TokenHash }}&type=signup` — not ConfirmationURL,
+        which auto-confirms on GET and is clicked by mail scanners.
+        """
+        origins = self.cors_origin_list
+        if not origins:
+            return None
+        return origins[0].rstrip("/")
 
     @property
     def is_development(self) -> bool:
