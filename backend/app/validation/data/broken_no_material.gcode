@@ -270797,5 +270797,6 @@ M73 Q100 S0
 ; wiping_volumes_use_custom_matrix = 0
 ; xy_size_compensation = 0
 ; z_offset = 0
+; prusaslicer_config = end
 
 
