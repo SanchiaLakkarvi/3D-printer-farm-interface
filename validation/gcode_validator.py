@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import struct
@@ -556,6 +557,22 @@ def parse_text_gcode(path: str | Path) -> ParsedGCode:
     return parsed
 
 
+def find_bgcode_converter() -> str | None:
+    """Find an explicit, PATH-installed, or locally built official converter."""
+    configured = os.environ.get("BGCODE_BIN")
+    if configured:
+        executable = shutil.which(configured)
+        return str(Path(executable).resolve()) if executable else None
+
+    executable = shutil.which("bgcode")
+    if executable:
+        return str(Path(executable).resolve())
+
+    name = "bgcode.exe" if os.name == "nt" else "bgcode"
+    local = Path(__file__).resolve().parent / ".tools" / "bin" / name
+    return shutil.which(str(local))
+
+
 def _convert_bgcode_to_text(path: Path) -> Path:
     """
     Convert BGCode to ASCII using Prusa's official libbgcode 'bgcode' CLI.
@@ -564,12 +581,13 @@ def _convert_bgcode_to_text(path: Path) -> Path:
         bgcode file.bgcode
     which produces file.gcode.
     """
-    executable = shutil.which("bgcode") or shutil.which("bgcode.exe")
+    executable = find_bgcode_converter()
     if not executable:
         raise ValidationError(
             "Full .bgcode validation requires the official Prusa libbgcode 'bgcode' "
-            "converter on PATH so executable M862/end-of-file checks can be performed. "
-            "Install/bundle libbgcode, or upload the converted .gcode file instead."
+            "converter so executable M862/end-of-file checks can be performed. "
+            "Run bash validation/setup_bgcode.sh, install bgcode on PATH, or set "
+            "BGCODE_BIN to its executable path. See validation/README.md."
         )
 
     temp_dir = Path(tempfile.mkdtemp(prefix="uwa_bgcode_"))

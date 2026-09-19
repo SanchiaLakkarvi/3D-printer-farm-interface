@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import shutil
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 # validation/
 VALIDATION_DIR = Path(__file__).resolve().parents[1]
@@ -13,7 +13,7 @@ DATA_DIR = VALIDATION_DIR / "data"
 # Allow this test file to import validation/gcode_validator.py.
 sys.path.insert(0, str(VALIDATION_DIR))
 
-from gcode_validator import validate_upload
+from gcode_validator import find_bgcode_converter, validate_upload
 
 REAL_GCODE = DATA_DIR / "Rook1_0.4n_0.15mm_PLA_COREONE_1h5m.gcode"
 REAL_BGCODE = DATA_DIR / "Rook1_0.4n_0.15mm_PLA_COREONE_1h5m.bgcode"
@@ -270,14 +270,26 @@ class TestGCodeValidator(unittest.TestCase):
 
         print_match_result(result)
 
-    @unittest.skipUnless(
-        shutil.which("bgcode") or shutil.which("bgcode.exe"),
-        (
-            "Prusa libbgcode CLI is not installed; "
-            "skipping strict real .bgcode test."
-        ),
-    )
+    def test_real_missing_material_fails_stage_3(self) -> None:
+        result = validate_upload(DATA_DIR / "broken_no_material.gcode")
+
+        self.assertFalse(result["passed"], result)
+        self.assertEqual(result["failed_stage"], 3, result)
+        self.assertIn("filament_type", result["errors"][0])
+
+    def test_real_wrong_printer_fails_stage_4(self) -> None:
+        result = validate_upload(DATA_DIR / "broken_wrong_printer.gcode")
+
+        self.assertFalse(result["passed"], result)
+        self.assertEqual(result["failed_stage"], 4, result)
+        self.assertIn("M862.3", result["errors"][0])
+
     def test_real_coreone_bgcode_matches_core_one(self) -> None:
+        self.assertIsNotNone(
+            find_bgcode_converter(),
+            "Prusa libbgcode is required. Run bash validation/setup_bgcode.sh "
+            "or set BGCODE_BIN; see validation/README.md.",
+        )
         self.assertTrue(
             REAL_BGCODE.is_file(),
             f"Missing test file: {REAL_BGCODE}",
@@ -304,6 +316,30 @@ class TestGCodeValidator(unittest.TestCase):
         )
 
         print_match_result(result)
+
+    def test_real_bgcode_requires_converter(self) -> None:
+        with patch("gcode_validator.find_bgcode_converter", return_value=None):
+            result = validate_upload(REAL_BGCODE)
+
+        self.assertFalse(result["passed"], result)
+        self.assertEqual(result["failed_stage"], 2, result)
+        self.assertIn("setup_bgcode.sh", result["errors"][0])
+
+    def test_invalid_explicit_converter_does_not_fall_back(self) -> None:
+        with patch.dict("os.environ", {"BGCODE_BIN": str(self.root / "missing.exe")}):
+            self.assertIsNone(find_bgcode_converter())
+
+    def test_corrupted_real_bgcode_fails_crc_check(self) -> None:
+        data = bytearray(REAL_BGCODE.read_bytes())
+        data[-1] ^= 1  # Corrupt the last block's stored checksum.
+        path = self.root / "corrupted.bgcode"
+        path.write_bytes(data)
+
+        result = validate_upload(path)
+
+        self.assertFalse(result["passed"], result)
+        self.assertEqual(result["failed_stage"], 2, result)
+        self.assertIn("CRC32", result["errors"][0])
 
 
 if __name__ == "__main__":
