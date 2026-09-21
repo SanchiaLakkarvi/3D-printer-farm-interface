@@ -61,7 +61,7 @@ Published URLs:
 | http://localhost:8000/docs | Swagger UI |
 | http://localhost:8000/redoc | ReDoc |
 
-`frontend` depends on `backend`. The browser calls the API at `http://localhost:8000` (`NEXT_PUBLIC_API_BASE_URL` in `docker-compose.yml`). Uploads persist in `./backend/storage` (mounted into the `backend` container). Postgres and Auth come from Supabase (no local database container). Migrations are **not** applied on boot (`RUN_MIGRATIONS=0` against the shared DB).
+`frontend` depends on `backend`. The browser calls the API at `http://localhost:8000` (`NEXT_PUBLIC_API_BASE_URL` in `docker-compose.yml`). Uploads persist in `./backend/storage` (mounted into the `backend` container; `FILE_STORAGE_ROOT` / `MAX_UPLOAD_BYTES` are environment-driven). Authenticated submitters can `POST /api/jobs/upload` (multipart `.gcode` / `.gco`) to create a `pending_selection` Print Job; unauthenticated, wrong-extension, oversize, and write/DB failures reject without lasting jobs or orphan files. Postgres and Auth come from Supabase (no local database container). Migrations are **not** applied on boot (`RUN_MIGRATIONS=0` against the shared DB).
 
 Demo Admin and Farmer accounts already exist in the shared Supabase project. Sign in from the UI, or via `POST /api/auth/signin` in `/docs` then **Authorize** with `Bearer <access_token>`.
 
@@ -271,6 +271,8 @@ User Collects Print
 ```
 
 The temporary G-code file should be deleted once the job has successfully completed, been removed, and no longer requires retrying. If a print fails, the file may be retained temporarily so that the operator or administrator can restart the job without requiring the user to upload it again.
+
+**Ownership:** that retention/delete rule belongs to the **job lifecycle / collection** slice — not to `POST /api/jobs/upload`. Upload only cleans up on its own gate/write/commit (and future #3 validation) failures.
 
 ---
 

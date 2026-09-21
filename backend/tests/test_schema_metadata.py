@@ -1,9 +1,10 @@
 """Metadata contract tests for SQLAlchemy models vs agreed live schema.
 
 These tests inspect Base.metadata only — no database connection.
-Models reflect Alembic head (after 0004): auth-profile shape with Role
+Models reflect Alembic head (after 0005): auth-profile shape with Role
 ``student``, ``first_name``/``last_name``, nullable ``student_number``, no
 ``auth_hash``; ``department`` (not ``unit_code``); no ``queue_position``;
+``pending_selection`` job status; nullable ``material_id`` + ``original_filename``;
 Phase B indexes present.
 """
 
@@ -89,7 +90,8 @@ def test_print_jobs_nullability_and_no_queue_position() -> None:
     jobs = _table("print_jobs")
     assert jobs.c.printer_id.nullable is True
     assert jobs.c.department.nullable is True
-    assert jobs.c.material_id.nullable is False
+    assert jobs.c.material_id.nullable is True
+    assert jobs.c.original_filename.nullable is True
     assert "queue_position" not in jobs.c
 
 
@@ -126,6 +128,7 @@ def test_enum_names_and_values() -> None:
         "maintenance",
     }
     assert {m.value for m in JobStatus} == {
+        "pending_selection",
         "submitted",
         "queued",
         "printing",
@@ -203,6 +206,9 @@ def test_baseline_revision_still_creates_queue_position() -> None:
     auth_profile = (
         VERSIONS_DIR / "0004_users_auth_profile_supabase_model.py"
     ).read_text()
+    upload = (
+        VERSIONS_DIR / "0005_print_jobs_pending_selection_upload.py"
+    ).read_text()
     assert 'sa.Column("queue_position", sa.Integer(), nullable=True)' in baseline
     assert 'sa.Column("department", sa.Text(), nullable=True)' in baseline
     assert 'op.drop_column("print_jobs", "queue_position")' in followup
@@ -210,9 +216,14 @@ def test_baseline_revision_still_creates_queue_position() -> None:
     assert 'revision: str = "0002_queue_indexes_drop_queue_position"' in followup
     assert 'revision: str = "0003_rename_unit_code_to_department"' in rename
     assert 'revision: str = "0004_users_auth_profile_supabase_model"' in auth_profile
+    assert 'revision: str = "0005_print_jobs_pending_selection_upload"' in upload
     assert 'down_revision' in followup and "0001_baseline_existing_schema" in followup
     assert "0002_queue_indexes_drop_queue_position" in rename
     assert "0003_rename_unit_code_to_department" in auth_profile
+    assert "0004_users_auth_profile_supabase_model" in upload
     assert "RENAME VALUE" in auth_profile or "student_staff" in auth_profile
     assert "first_name" in auth_profile and "student_number" in auth_profile
     assert "auth_hash" in auth_profile
+    assert "pending_selection" in upload
+    assert "original_filename" in upload
+    assert "material_id" in upload
