@@ -53,11 +53,12 @@ class PrintJob(Base):
         ForeignKey("printers.id", name="print_jobs_printer_id_fkey"),
         nullable=True,
     )
-    material_id: Mapped[uuid.UUID] = mapped_column(
+    material_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("materials.id", name="print_jobs_material_id_fkey"),
-        nullable=False,
+        nullable=True,
     )
     gcode_path: Mapped[str] = mapped_column(Text, nullable=False)
+    original_filename: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[JobStatus] = mapped_column(
         job_status_enum,
         nullable=False,
@@ -80,7 +81,7 @@ class PrintJob(Base):
 
     user: Mapped[User] = relationship(back_populates="print_jobs")
     printer: Mapped[Printer | None] = relationship(back_populates="print_jobs")
-    material: Mapped[Material] = relationship(back_populates="print_jobs")
+    material: Mapped[Material | None] = relationship(back_populates="print_jobs")
     validations: Mapped[list[JobValidation]] = relationship(back_populates="job")
     notifications: Mapped[list[Notification]] = relationship(back_populates="job")
     collection_record: Mapped[CollectionRecord | None] = relationship(
