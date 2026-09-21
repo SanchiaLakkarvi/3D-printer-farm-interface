@@ -1,0 +1,125 @@
+# UWA HARDWARE TEMPLATE.
+# Hardware identities and limits match the two confirmed printer variants.
+# Inventory credentials and UWA policy values remain intentionally unset.
+
+connect:
+  server: https://YOUR-CONNECT-COMPATIBLE-BACKEND.example.edu.au
+
+gcode_tail_bytes: 2097152
+
+printers:
+  - id: uwa-xl-01
+    enabled: false
+    serial_number: TODO_REAL_SERIAL
+    fingerprint: TODO_REAL_FINGERPRINT_OR_REGISTRATION_VALUE
+    token: TODO_CONNECT_TOKEN
+    physical_model: PRUSA_XL_5T_INPUT_SHAPER
+    gcode_printer_model: XL5IS
+    approved_profile_id: uwa-xl5is-04
+    storage_dir: ./storage/uwa-xl-01
+    chamber_supported: false
+    toolheads:
+      - slot: 0
+        nozzle_diameter_mm: 0.4
+        high_flow: false
+      - slot: 1
+        nozzle_diameter_mm: 0.4
+        high_flow: false
+      - slot: 2
+        nozzle_diameter_mm: 0.4
+        high_flow: false
+      - slot: 3
+        nozzle_diameter_mm: 0.4
+        high_flow: false
+      - slot: 4
+        nozzle_diameter_mm: 0.4
+        high_flow: false
+      # Add `spool` under each tool after recording the loaded UWA consumable:
+      # spool: {material: PLA, colour: orange, remaining_g: 1000}
+    simulation_speed: 1
+    sdk_identity:
+      # Current Prusa-Connect-SDK-Printer does not publish XL/CORE One enum
+      # values. Keep the mock identity synthetic until your backend captures
+      # the exact real-printer registration/headers you intend to support.
+      type: 0
+      version: 0
+      subversion: 0
+      header: MOCK
+
+  - id: uwa-coreone-01
+    enabled: false
+    serial_number: TODO_REAL_SERIAL
+    fingerprint: TODO_REAL_FINGERPRINT_OR_REGISTRATION_VALUE
+    token: TODO_CONNECT_TOKEN
+    physical_model: PRUSA_CORE_ONE
+    gcode_printer_model: COREONE
+    approved_profile_id: uwa-coreone-hf04
+    storage_dir: ./storage/uwa-coreone-01
+    chamber_supported: true
+    toolheads:
+      - slot: 0
+        nozzle_diameter_mm: 0.4
+        high_flow: true
+        # spool: {material: PLA, colour: black, remaining_g: 1000}
+    simulation_speed: 1
+    sdk_identity:
+      type: 0
+      version: 0
+      subversion: 0
+      header: MOCK
+
+approved_profiles:
+  - id: uwa-xl5is-04
+    enabled: true
+    physical_models: [PRUSA_XL_5T_INPUT_SHAPER]
+    command_policy:
+      firmware_model: XL
+      input_shaper_required: true
+      build_volume_mm: {x: 360, y: 360, z: 360}
+      max_nozzle_temperature_c: 290
+      max_bed_temperature_c: 120
+    metrics:
+      estimated_print_duration: estimated printing time (normal mode)
+      estimated_filament_usage: filament used [cm3]
+      filament_length: filament used [mm]
+      filament_density: filament_density
+      estimated_filament_weight: filament used [g]
+    rules:
+      - {id: printer-model, metadata_key: printer_model, operator: equals, expected: XL5IS}
+      - {id: bed-shape, metadata_key: bed_shape, operator: equals, expected: "0x0,360x0,360x360,0x360", remove_all_whitespace: true}
+      - {id: max-height, metadata_key: max_print_height, operator: equals, expected: "360"}
+      - {id: printer-profile, metadata_key: printer_settings_id, operator: equals, expected: "Original Prusa XL - 5T Input Shaper 0.4 nozzle"}
+      - {id: nozzle-diameters, metadata_key: nozzle_diameter, operator: sequence_equals, expected_from: nozzle_diameters}
+      - {id: nozzle-flow, metadata_key: nozzle_high_flow, operator: sequence_equals, expected_from: nozzle_high_flow}
+      - {id: estimated-duration, metadata_key: estimated printing time (normal mode), operator: present}
+      - {id: filament-weight, metadata_key: "filament used [g]", operator: present}
+      # Add exact UWA-approved print_settings_id, filament_settings_id,
+      # materials, and process limits after exporting the approved BGCode.
+
+  - id: uwa-coreone-hf04
+    enabled: true
+    physical_models: [PRUSA_CORE_ONE]
+    command_policy:
+      firmware_model: COREONE
+      input_shaper_required: true
+      build_volume_mm: {x: 250, y: 220, z: 270}
+      max_nozzle_temperature_c: 290
+      max_bed_temperature_c: 120
+      max_chamber_temperature_c: 55
+    metrics:
+      estimated_print_duration: estimated printing time (normal mode)
+      estimated_filament_usage: filament used [cm3]
+      filament_length: filament used [mm]
+      filament_density: filament_density
+      estimated_filament_weight: filament used [g]
+    rules:
+      - {id: printer-model, metadata_key: printer_model, operator: equals, expected: COREONE}
+      - {id: bed-shape, metadata_key: bed_shape, operator: equals, expected: "0x0,250x0,250x220,0x220", remove_all_whitespace: true}
+      - {id: max-height, metadata_key: max_print_height, operator: equals, expected: "270"}
+      - {id: printer-profile, metadata_key: printer_settings_id, operator: equals, expected: "Prusa CORE One HF0.4 nozzle"}
+      - {id: nozzle-diameter, metadata_key: nozzle_diameter, operator: sequence_equals, expected_from: nozzle_diameters}
+      - {id: nozzle-flow, metadata_key: nozzle_high_flow, operator: sequence_equals, expected_from: nozzle_high_flow}
+      - {id: estimated-duration, metadata_key: estimated printing time (normal mode), operator: present}
+      - {id: filament-weight, metadata_key: "filament used [g]", operator: present}
+      # Add exact UWA-approved print_settings_id, filament_settings_id,
+      # materials, and process limits after exporting the approved BGCode.
