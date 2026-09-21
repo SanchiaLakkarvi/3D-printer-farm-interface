@@ -287,8 +287,8 @@ class TestGCodeValidator(unittest.TestCase):
     def test_real_coreone_bgcode_matches_core_one(self) -> None:
         self.assertIsNotNone(
             find_bgcode_converter(),
-            "Prusa libbgcode is required. Run bash validation/setup_bgcode.sh "
-            "or set BGCODE_BIN; see validation/README.md.",
+            "Prusa libbgcode is required. Run bash backend/app/validation/setup_bgcode.sh "
+            "or set BGCODE_BIN; see backend/app/validation/README.md.",
         )
         self.assertTrue(
             REAL_BGCODE.is_file(),

@@ -1,0 +1,26 @@
+/* Live dashboard, queue and upload views. Reuses .panel, .stats, .job, .primary from globals.css. */
+.farm-banner{margin-bottom:14px}
+.farm-empty{color:#8793a1;font-size:11px;padding:14px 0}
+.farm-printer{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 0;border-top:1px solid #edf1f4}
+.farm-printer b{font-size:10px}.farm-printer small{font-size:8px;color:#8793a1;grid-column:1}.farm-printer em{grid-row:1/3;grid-column:2;align-self:center}
+.farm-printers{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:13px;margin-bottom:16px}
+.farm-printer-card{display:flex;flex-direction:column;gap:5px}.farm-printer-card h2{margin:6px 0 2px}.farm-printer-card small{font-size:10px;color:#728095}
+.farm-table-panel{margin-top:16px}.farm-scroll{overflow-x:auto}
+.farm-table{width:100%;border-collapse:collapse;font-size:10px;min-width:640px}
+.farm-table th{text-align:left;font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:#7c8896;padding:8px 10px 8px 0;border-bottom:1px solid #e0e6eb}
+.farm-table td{padding:11px 10px 11px 0;border-bottom:1px solid #edf1f4}
+em[class^="s-"],em[class^="p-"],.job em[class^="s-"],.farm-printer em,.farm-printer-card em,.farm-table em{font-style:normal;font-size:8px;padding:5px 8px;border-radius:15px;background:#e8f5fa;color:var(--blue);white-space:nowrap;width:fit-content}
+em.s-queued,em.s-submitted{background:#fff4d9;color:#97620c}
+em.s-completed,em.s-ready_for_collection,em.p-idle{background:#e5f7ef;color:#0b7c59}
+em.s-failed,em.p-error{background:#fff0ef;color:#ac312c}
+em.p-offline,em.p-maintenance,em.s-removed{background:#eef0f3;color:#5d6b7c}
+.farm-result h2,.summary h2{display:flex;align-items:center;gap:8px}.farm-result h2 svg,.summary h2 svg{width:20px}
+.farm-result p{font-size:12px;color:#556478;line-height:1.6}
+.farm-stages{list-style:none;padding:0;margin:12px 0;display:grid;gap:6px;font-size:11px}
+.farm-stages .ok{color:#0b7c59}.farm-stages .bad{color:#ac312c;font-weight:700}
+.farm-hint{font-size:10px!important;color:#728095!important}
+.farm-choose{display:flex;flex-direction:column;gap:12px}
+.farm-choose label{display:flex;flex-direction:column;gap:6px;font-size:10px;font-weight:700;color:#3b4b5e}
+.farm-choose select{height:42px;border:1px solid #d5dde5;border-radius:10px;padding:0 10px;font-size:12px;background:#fff}
+.farm-actions{display:flex;gap:10px;flex-wrap:wrap}.farm-actions .primary{width:auto;padding:0 22px}
+.farm-secondary{height:49px;border-radius:11px;border:1px solid #d5dde5;background:#fff;padding:0 20px;font-weight:700;font-size:12px;cursor:pointer}

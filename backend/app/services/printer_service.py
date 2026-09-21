@@ -51,6 +51,9 @@ def create_printer(db: Session, data: PrinterCreate) -> Printer:
         location=data.location,
         locked_profile=data.locked_profile,
         current_material_id=data.current_material_id,
+        prusalink_url=data.prusalink_url,
+        prusalink_username=data.prusalink_username,
+        prusalink_password=data.prusalink_password,
     )
     db.add(printer)
     db.commit()

@@ -61,3 +61,25 @@ class BadRequestError(AppError):
             code=code,
             message=message,
         )
+
+
+class PayloadTooLargeError(AppError):
+    def __init__(self, message: str) -> None:
+        super().__init__(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            code="PAYLOAD_TOO_LARGE",
+            message=message,
+        )
+
+
+class UnprocessableError(AppError):
+    """422 with optional structured details (e.g. failed validation checks)."""
+
+    def __init__(self, code: str, message: str, details: dict | None = None) -> None:
+        super().__init__(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            code=code,
+            message=message,
+        )
+        if details:
+            self.detail.update(details)

@@ -30,6 +30,7 @@ class QueueTileResponse(BaseModel):
     est_duration_formatted: str
     est_start_time: datetime | None = None
     est_completion_time: datetime | None = None
+    duration_is_default: bool = False
     submitted_at: datetime
 
 
@@ -88,3 +89,45 @@ class FarmStatisticsResponse(BaseModel):
     printer_stats: list[PrinterUtilStat]
     material_stats: list[MaterialUtilStat]
     department_stats: list[DepartmentUtilStat]
+
+
+
+class ValidationStageOut(BaseModel):
+    stage: int
+    name: str
+    status: str
+
+
+class CompatiblePrinter(BaseModel):
+    printer_id: uuid.UUID
+    model: str
+    location: str | None = None
+    status: PrinterStatus
+
+
+class GcodeValidationResponse(BaseModel):
+    """Result of validating an uploaded file. Nothing is stored or queued."""
+
+    filename: str
+    passed: bool
+    message: str
+    errors: list[str] = []
+    failed_stage: int | None = None
+    stages: list[ValidationStageOut] = []
+    required_material: str | None = None
+    est_duration_min: float | None = None
+    est_filament_g: float | None = None
+    estimated_cost_usd: float = 0.0
+    compatible_printers: list[CompatiblePrinter] = []
+
+
+class JobSubmissionResponse(BaseModel):
+    job_id: uuid.UUID
+    filename: str
+    status: JobStatus
+    printer_id: uuid.UUID
+    est_duration_min: float
+    est_filament_g: float | None = None
+    estimated_cost_usd: float
+    est_start_time: datetime | None = None
+    est_completion_time: datetime | None = None

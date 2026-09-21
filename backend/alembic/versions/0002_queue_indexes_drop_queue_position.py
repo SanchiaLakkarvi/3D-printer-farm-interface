@@ -18,6 +18,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Alembic creates alembic_version.version_num as VARCHAR(32), but these
+    # revision ids are longer, so widen it before the version row is updated.
+    op.execute("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(255)")
     op.create_index(
         "idx_printers_current_material_id",
         "printers",

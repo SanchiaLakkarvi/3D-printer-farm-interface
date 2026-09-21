@@ -2,16 +2,24 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.jobs import PrintHistoryResponse, QueueTileResponse
-from app.services import job_service
+from app.core.config import settings
+from app.core.exceptions import PayloadTooLargeError
+from app.schemas.jobs import (
+    GcodeValidationResponse,
+    JobSubmissionResponse,
+    PrintHistoryResponse,
+    QueueTileResponse,
+)
+from app.services import job_service, submission_service
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -50,3 +58,45 @@ def get_print_history(
 ) -> list[PrintHistoryResponse]:
     """List print history with calculated statistics and cost ($2 1st hr + $0.50 addl hrs). Requires authentication."""
     return job_service.get_print_history(db=db, user=current_user)
+
+
+def _read_upload(file: UploadFile) -> bytes:
+    """Read an upload, stopping early if it exceeds the size limit."""
+    data = file.file.read(settings.max_upload_bytes + 1)
+    if len(data) > settings.max_upload_bytes:
+        raise PayloadTooLargeError(
+            f"File exceeds the {settings.max_upload_bytes // (1024 * 1024)} MB limit."
+        )
+    return data
+
+
+@router.post("/validate", response_model=GcodeValidationResponse)
+def validate_gcode(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    file: Annotated[UploadFile, File(description="Pre-sliced PrusaSlicer .gcode/.bgcode file")],
+) -> GcodeValidationResponse:
+    """Validate an uploaded G-code file and list compatible printers. Stores nothing."""
+    del current_user
+    return submission_service.validate_file(
+        db=db, filename=file.filename or "", data=_read_upload(file)
+    )
+
+
+@router.post("", response_model=JobSubmissionResponse, status_code=201)
+def submit_job(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    file: Annotated[UploadFile, File(description="Pre-sliced PrusaSlicer .gcode/.bgcode file")],
+    printer_id: Annotated[uuid.UUID, Form()],
+    material_id: Annotated[uuid.UUID, Form()],
+) -> JobSubmissionResponse:
+    """Validate the file for the chosen printer/material and add it to the queue."""
+    return submission_service.submit_job(
+        db=db,
+        user=current_user,
+        filename=file.filename or "",
+        data=_read_upload(file),
+        printer_id=printer_id,
+        material_id=material_id,
+    )

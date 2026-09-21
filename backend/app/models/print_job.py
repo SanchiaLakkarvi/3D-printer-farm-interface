@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import (
     DateTime,
     Float,
+    Integer,
     ForeignKey,
     Index,
     PrimaryKeyConstraint,
@@ -74,7 +75,20 @@ class PrintJob(Base):
         nullable=False,
         server_default=text("now()"),
     )
+    printer_job_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    est_start_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    est_completion_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )

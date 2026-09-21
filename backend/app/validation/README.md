@@ -63,7 +63,7 @@ test is never silently skipped.
 Run from the repository root:
 
 ```bash
-bash validation/test_validation.sh
+bash backend/app/validation/test_validation.sh
 ```
 
 The runner checks both real CORE One formats and all four deliberately broken
@@ -71,13 +71,13 @@ samples. It probes Python candidates before choosing one, avoiding inactive
 Microsoft Store aliases on Windows. To select Thonny explicitly in Git Bash:
 
 ```bash
-PYTHON_BIN="$LOCALAPPDATA/Programs/Thonny/python.exe" bash validation/test_validation.sh
+PYTHON_BIN="$LOCALAPPDATA/Programs/Thonny/python.exe" bash backend/app/validation/test_validation.sh
 ```
 
 ### Install the binary converter
 
 The validator looks for `BGCODE_BIN` (when explicitly set), then `bgcode` on
-`PATH`, then `validation/.tools/bin/bgcode` (`bgcode.exe` on Windows).
+`PATH`, then `backend/app/validation/.tools/bin/bgcode` (`bgcode.exe` on Windows).
 An invalid explicit `BGCODE_BIN` is an error, rather than a fallback to another
 converter. Paths containing spaces are supported.
 
@@ -98,10 +98,10 @@ You also need Python 3.10+. If you use Homebrew, `brew install python` provides
 root, install CMake in an isolated build environment and run the native setup:
 
 ```bash
-python3 -m venv validation/.tools/build-env
-validation/.tools/build-env/bin/python -m pip install "cmake==3.31.10"
-PATH="$PWD/validation/.tools/build-env/bin:$PATH" bash validation/setup_bgcode.sh
-PYTHON_BIN="$PWD/validation/.tools/build-env/bin/python" bash validation/test_validation.sh
+python3 -m venv backend/app/validation/.tools/build-env
+backend/app/validation/.tools/build-env/bin/python -m pip install "cmake==3.31.10"
+PATH="$PWD/validation/.tools/build-env/bin:$PATH" bash backend/app/validation/setup_bgcode.sh
+PYTHON_BIN="$PWD/validation/.tools/build-env/bin/python" bash backend/app/validation/test_validation.sh
 ```
 
 [CMake 3.31.10](https://pypi.org/project/cmake/3.31.10/) supplies Intel and Apple
@@ -117,7 +117,7 @@ but the complete build and test suite have not yet been run on a Mac.
 
 **WSL is a Linux validation environment.** A converter built with `--windows`
 provides `bgcode.exe` for Windows Python only. WSL's Linux Python needs the native
-`bgcode` executable. Both can coexist in `validation/.tools/bin/`; the validator
+`bgcode` executable. Both can coexist in `backend/app/validation/.tools/bin/`; the validator
 selects the one for the running Python platform. The runner likewise selects
 that platform's virtual environment.
 
@@ -126,12 +126,12 @@ To build and test in **WSL Ubuntu**, run these commands in the repository direct
 ```bash
 sudo apt-get update
 sudo apt-get install -y git cmake build-essential
-BGCODE_BUILD_DIR="$HOME/.cache/uwa-bgcode-linux" bash validation/setup_bgcode.sh
-bash validation/test_validation.sh
+BGCODE_BUILD_DIR="$HOME/.cache/uwa-bgcode-linux" bash backend/app/validation/setup_bgcode.sh
+bash backend/app/validation/test_validation.sh
 ```
 
 On other Linux systems, install Git, CMake 3.x (3.22 or newer), Make, and a C++17
-compiler, then run `bash validation/setup_bgcode.sh` followed by the test runner.
+compiler, then run `bash backend/app/validation/setup_bgcode.sh` followed by the test runner.
 
 For **Git Bash with Windows Python**, the following WSL Ubuntu commands build a
 native, self-contained Windows executable. These commands do **not** install the
@@ -140,21 +140,21 @@ Linux converter needed for tests inside WSL:
 ```bash
 sudo apt-get update
 sudo apt-get install -y git cmake make g++-mingw-w64-x86-64-posix
-BGCODE_BUILD_DIR="$HOME/.cache/uwa-bgcode-windows" bash validation/setup_bgcode.sh --windows
+BGCODE_BUILD_DIR="$HOME/.cache/uwa-bgcode-windows" bash backend/app/validation/setup_bgcode.sh --windows
 ```
 
-Then run `bash validation/test_validation.sh` in **Git Bash with Windows Python**.
+Then run `bash backend/app/validation/test_validation.sh` in **Git Bash with Windows Python**.
 The Windows build does not require WSL at validation time. Alternatively, build
 natively using Git Bash, CMake 3.x and Visual Studio C++ build tools with
-`bash validation/setup_bgcode.sh`.
+`bash backend/app/validation/setup_bgcode.sh`.
 
 `BGCODE_BUILD_DIR` selects the build cache; using WSL's Linux filesystem avoids
 slow dependency extraction on Windows-mounted drives. Omit it to build under
-`validation/.tools/`.
+`backend/app/validation/.tools/`.
 
 The setup script downloads the official source at commit
 `d4da9073616d70a43c151e8c1d7fbff879d2e08a` and its checksum-pinned dependencies,
-then installs under `validation/.tools/`. Source, build files and binaries are
+then installs under `backend/app/validation/.tools/`. Source, build files and binaries are
 ignored by Git. Setup needs internet access and may take several minutes; normal
 validation runs offline. See Prusa's [build instructions](https://github.com/prusa3d/libbgcode/blob/d4da9073616d70a43c151e8c1d7fbff879d2e08a/doc/building.md)
 and [converter usage](https://github.com/prusa3d/libbgcode/blob/d4da9073616d70a43c151e8c1d7fbff879d2e08a/doc/bgcode.md).
@@ -162,7 +162,7 @@ and [converter usage](https://github.com/prusa3d/libbgcode/blob/d4da9073616d70a4
 If you already have an official converter elsewhere, no local build is needed:
 
 ```bash
-BGCODE_BIN="/path/to/bgcode" bash validation/test_validation.sh
+BGCODE_BIN="/path/to/bgcode" bash backend/app/validation/test_validation.sh
 ```
 
 ### If the runner reports two failed groups in WSL
