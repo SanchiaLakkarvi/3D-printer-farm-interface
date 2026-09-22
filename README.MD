@@ -45,6 +45,29 @@ Detached:
 docker compose up --build -d
 ```
 
+### Windows users: backend does not start
+
+Windows Git settings can convert `backend/docker-entrypoint.sh` from Unix
+`LF` to `CRLF` line endings. If the backend logs contain either
+`exec ./docker-entrypoint.sh: no such file or directory` or
+`set: Illegal option`, rebuild the backend image so the Dockerfile normalizes
+the script before starting it:
+
+```powershell
+docker compose down
+docker compose build --no-cache backend
+docker compose up -d
+```
+
+Check that the backend is available before opening the UI:
+
+```powershell
+Invoke-WebRequest http://localhost:8000/health
+```
+
+The response should include `"status": "ok"`. Do not change the Supabase
+database settings for this error; it occurs before the API starts.
+
 Compose loads `backend/.env`, builds three images, and starts:
 
 | Service | Container | Port | Build context |
