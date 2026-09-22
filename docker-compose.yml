@@ -1,6 +1,13 @@
-# FastAPI backend + Vinext/Vite frontend against Supabase (Postgres + Auth).
-# Do not commit backend/.env — it contains secrets.
+# FastAPI backend + Vinext/Vite frontend + mock PrusaLink printers.
+# Postgres/Auth still come from Supabase (see backend/.env). Do not commit that file.
 services:
+  mockserver:
+    container_name: mockserver
+    build:
+      context: ./mockserver
+    ports:
+      - "8080:8080"
+
   backend:
     container_name: backend
     build:
@@ -17,8 +24,14 @@ services:
       RUN_MIGRATIONS: "0"
       # Ensure the Compose UI origin is allowed even if .env omits it.
       CORS_ORIGINS: "http://localhost:5173,http://localhost:3000"
+      # Reach mock printers on the Compose network (overrides localhost in .env).
+      MOCK_PRINTER_BASE_URL: http://mockserver:8080
+      # Poll PrusaLink and dispatch queued jobs (0 disables; demo overlay also sets this).
+      PRINTER_POLL_INTERVAL_S: "2"
     volumes:
       - ./backend/storage:/app/storage
+    depends_on:
+      - mockserver
 
   frontend:
     container_name: frontend
