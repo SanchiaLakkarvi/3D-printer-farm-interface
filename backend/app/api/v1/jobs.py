@@ -8,18 +8,19 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_submitter
 from app.db.session import get_db
 from app.models.user import User
 from app.core.config import settings
 from app.core.exceptions import PayloadTooLargeError
+from app.schemas.job import JobUploadOut
 from app.schemas.jobs import (
     GcodeValidationResponse,
     JobSubmissionResponse,
     PrintHistoryResponse,
     QueueTileResponse,
 )
-from app.services import job_service, submission_service
+from app.services import job_service, submission_service, upload_service
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
