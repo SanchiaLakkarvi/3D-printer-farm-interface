@@ -8,7 +8,7 @@ A web-based 3D printer farm management system designed to provide a central inte
 
 ## Getting started (local)
 
-Docker Compose runs the FastAPI API and the Vinext/Vite UI against the team Supabase project.
+Docker Compose runs the FastAPI API, Vinext/Vite UI, and mock PrusaLink printers against the team Supabase project.
 
 ### Prerequisites
 
@@ -45,10 +45,11 @@ Detached:
 docker compose up --build -d
 ```
 
-Compose loads `backend/.env`, builds two images, and starts:
+Compose loads `backend/.env`, builds three images, and starts:
 
 | Service | Container | Port | Build context |
 |---|---|---|---|
+| `mockserver` | `mockserver` | 8080 | `./mockserver` |
 | `backend` | `backend` | 8000 | `./backend` |
 | `frontend` | `frontend` | 5173 | `./frontend/UWA-3D-Print-Farm` |
 
@@ -60,8 +61,10 @@ Published URLs:
 | http://localhost:8000/health | API health check |
 | http://localhost:8000/docs | Swagger UI |
 | http://localhost:8000/redoc | ReDoc |
+| http://localhost:8080/monitor | Mock printer live monitor |
+| http://localhost:8080/docs | Mock printer operator API |
 
-`frontend` depends on `backend`. The browser calls the API at `http://localhost:8000` (`NEXT_PUBLIC_API_BASE_URL` in `docker-compose.yml`). Uploads persist in `./backend/storage` (mounted into the `backend` container; `FILE_STORAGE_ROOT` / `MAX_UPLOAD_BYTES` are environment-driven). Authenticated submitters can `POST /api/jobs/upload` (multipart `.gcode` / `.gco`) to create a `pending_selection` Print Job; unauthenticated, wrong-extension, oversize, and write/DB failures reject without lasting jobs or orphan files. Postgres and Auth come from Supabase (no local database container). Migrations are **not** applied on boot (`RUN_MIGRATIONS=0` against the shared DB).
+`frontend` depends on `backend`; `backend` depends on `mockserver` and reaches it at `http://mockserver:8080` (`MOCK_PRINTER_BASE_URL`). The browser calls the API at `http://localhost:8000` (`NEXT_PUBLIC_API_BASE_URL` in `docker-compose.yml`). Uploads persist in `./backend/storage` (mounted into the `backend` container; `FILE_STORAGE_ROOT` / `MAX_UPLOAD_BYTES` are environment-driven). Authenticated submitters can `POST /api/jobs/upload` (multipart `.gcode` / `.gco`) to create a `pending_selection` Print Job; unauthenticated, wrong-extension, oversize, and write/DB failures reject without lasting jobs or orphan files. Postgres and Auth come from Supabase (no local database container). Migrations are **not** applied on boot (`RUN_MIGRATIONS=0` against the shared DB).
 
 Demo Admin and Farmer accounts already exist in the shared Supabase project. Sign in from the UI, or via `POST /api/auth/signin` in `/docs` then **Authorize** with `Bearer <access_token>`.
 
