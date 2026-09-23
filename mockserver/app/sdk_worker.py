@@ -134,6 +134,36 @@ class MockPrinterWorker:
         self._validation_by_virtual_path[virtual_path] = result
         return result
 
+    STORAGE_NAME = "usb"
+
+    def storage_path(self, relative_path: str) -> Path:
+        """OS path for a file on the printer's storage; rejects paths that escape it."""
+        root = Path(self.config.storage_dir).resolve()
+        target = (root / relative_path.lstrip("/")).resolve()
+        if root != target and root not in target.parents:
+            raise ValueError("Path escapes printer storage")
+        return target
+
+    def handle_upload(self, relative_path: str, print_after_upload: bool) -> None:
+        """Validate a file uploaded over PrusaLink; start it if requested.
+
+        Like real firmware, an invalid file is accepted but the printer goes to
+        ATTENTION instead of printing.
+        """
+        virtual_path = f"/{self.STORAGE_NAME}/{relative_path.lstrip('/')}"
+        result = self.validator.validate(
+            str(self.storage_path(relative_path)), self.config, self.profile
+        )
+        self.last_validation = result
+        self._validation_by_virtual_path[virtual_path] = result
+        if not result.valid:
+            reason = "; ".join(issue.message for issue in result.issues[:5])
+            self.inject_fault(const.State.ATTENTION, f"G-code validation failed: {reason}")
+            return
+        self.transport.set_state(const.State.READY, const.Source.FIRMWARE, ready=True)
+        if print_after_upload:
+            self._start_validated_file(virtual_path)
+
     def inject_fault(self, state: const.State, reason: str) -> None:
         if state not in {const.State.ERROR, const.State.ATTENTION}:
             raise ValueError("Only ERROR or ATTENTION can be injected")

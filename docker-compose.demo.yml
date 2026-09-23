@@ -1,0 +1,44 @@
+# Local demo: UI + API + mock printers + a throwaway Postgres. No Supabase needed.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+#
+# Layers on top of docker-compose.yml (same ports: UI 5173, API 8000, mock 8080).
+# Swaps Supabase for a throwaway Postgres + fake auth. Accounts disappear when
+# the backend restarts. Never point this at a shared database.
+# Mock printers come from docker-compose.yml (service: mockserver).
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: printfarm
+      POSTGRES_PASSWORD: printfarm
+      POSTGRES_DB: printfarm
+    volumes:
+      - demo-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U printfarm -d printfarm"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    depends_on:
+      db:
+        condition: service_healthy
+      mockserver:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+psycopg://printfarm:printfarm@db:5432/printfarm
+      AUTH_ADAPTER: fake
+      RUN_MIGRATIONS: "1"
+      RUN_SEED: "1"
+      PRINTER_POLL_INTERVAL_S: "2"
+      # Fake auth forgets logins on every restart, so these are re-created at startup
+      # (matching any profile already in the database). Format: email:password:role,...
+      # Override with your own in a .env file next to this one, e.g.
+      #   DEMO_ACCOUNTS=12345678@student.uwa.edu.au:my-password:student,farmer.demo@uwa.edu.au:demo-password-1:farmer,00000001@student.uwa.edu.au:demo-password-1:admin
+      DEMO_ACCOUNTS: "${DEMO_ACCOUNTS:-00000001@student.uwa.edu.au:demo-password-1:admin,00000002@student.uwa.edu.au:demo-password-1:student,farmer.demo@uwa.edu.au:demo-password-1:farmer}"
+
+volumes:
+  demo-db:

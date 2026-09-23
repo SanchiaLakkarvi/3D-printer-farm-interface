@@ -3,7 +3,7 @@
 # spool data, and the ASCII test fixtures are synthetic.
 
 connect:
-  server: http://127.0.0.1:9000
+  server: http://host.docker.internal:9000
 
 gcode_tail_bytes: 2097152
 
@@ -39,7 +39,7 @@ printers:
     chamber_supported: true
     toolheads:
       - {slot: 0, nozzle_diameter_mm: 0.4, high_flow: true, spool: {material: PLA, colour: black, remaining_g: 850}}
-    simulation_speed: 1
+    simulation_speed: 60
     sdk_identity: {type: 0, version: 0, subversion: 0, header: MOCK}
 
 approved_profiles:

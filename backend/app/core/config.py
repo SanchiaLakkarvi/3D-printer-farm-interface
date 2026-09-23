@@ -21,6 +21,8 @@ class Settings(BaseSettings):
 
     # Auth: "fake" for tests/local without Supabase; "supabase" for real Auth.
     auth_adapter: str = "fake"
+    # Fake adapter only: accounts (re)created on every start. See services/demo_accounts.py.
+    demo_accounts: str = ""
     supabase_url: str = ""
     supabase_anon_key: str = ""
     supabase_service_role_key: str = ""
@@ -35,6 +37,8 @@ class Settings(BaseSettings):
     max_upload_bytes: int = 50 * 1024 * 1024  # 50 MB
 
     printer_adapter: str = "mock"
+    # Seconds between printer syncs; 0 disables the background poller.
+    printer_poll_interval_s: float = 0.0
     mock_printer_base_url: str = "http://localhost:8080"
 
     @property

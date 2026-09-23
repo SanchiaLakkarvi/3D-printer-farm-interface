@@ -586,8 +586,8 @@ def _convert_bgcode_to_text(path: Path) -> Path:
         raise ValidationError(
             "Full .bgcode validation requires the official Prusa libbgcode 'bgcode' "
             "converter so executable M862/end-of-file checks can be performed. "
-            "Run bash validation/setup_bgcode.sh, install bgcode on PATH, or set "
-            "BGCODE_BIN to its executable path. See validation/README.md."
+            "Run bash backend/app/validation/setup_bgcode.sh, install bgcode on PATH, or set "
+            "BGCODE_BIN to its executable path. See backend/app/validation/README.md."
         )
 
     temp_dir = Path(tempfile.mkdtemp(prefix="uwa_bgcode_"))

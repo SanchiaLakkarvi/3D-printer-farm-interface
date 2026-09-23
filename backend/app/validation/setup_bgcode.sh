@@ -16,13 +16,13 @@ if [[ "${1:-}" == "--windows" ]]; then
     shift
 fi
 if [[ $# -ne 0 ]]; then
-    echo "Usage: bash validation/setup_bgcode.sh [--windows]"
+    echo "Usage: bash backend/app/validation/setup_bgcode.sh [--windows]"
     exit 1
 fi
 
 for tool in git cmake; do
     if ! command -v "$tool" >/dev/null 2>&1; then
-        echo "ERROR: $tool is required. See validation/README.md for build prerequisites."
+        echo "ERROR: $tool is required. See backend/app/validation/README.md for build prerequisites."
         exit 1
     fi
 done
@@ -67,5 +67,5 @@ if [[ "$BUILD_NAME" == "windows" ]]; then
     echo "This is a Windows executable: run tests in Git Bash with Windows Python."
     echo "For tests in WSL, also run this setup without --windows to build the Linux converter."
 else
-    echo "Run bash validation/test_validation.sh on the platform used for this build."
+    echo "Run bash backend/app/validation/test_validation.sh on the platform used for this build."
 fi
