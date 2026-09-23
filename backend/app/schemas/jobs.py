@@ -24,6 +24,7 @@ class QueueTileResponse(BaseModel):
 
     job_id: uuid.UUID
     filename: str
+    department: str | None = None
     status: JobStatus
     assigned_printer: PrinterAssignedSummary | None = None
     est_duration_min: float | None = None
