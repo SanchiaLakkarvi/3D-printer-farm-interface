@@ -46,7 +46,8 @@ test("signupStudent POSTs exactly the five backend fields", async () => {
     calls.push({ url: String(url), init });
     return new Response(
       JSON.stringify({
-        message: "Check your email to confirm your account, then sign in.",
+        message:
+          "Check your email for a six-digit verification code, then enter it to confirm.",
         email: "22701234@student.uwa.edu.au",
       }),
       { status: 201, headers: { "content-type": "application/json" } },
@@ -94,7 +95,8 @@ test("signupStudent success does not store an access token", async () => {
   globalThis.fetch = async () =>
     new Response(
       JSON.stringify({
-        message: "Check your email to confirm your account, then sign in.",
+        message:
+          "Check your email for a six-digit verification code, then enter it to confirm.",
         email: "22701234@student.uwa.edu.au",
       }),
       { status: 201, headers: { "content-type": "application/json" } },
@@ -192,6 +194,86 @@ const sampleProfile = {
   department: "Mechanical Engineering",
   student_number: "22701234",
 };
+
+test("verifySignupCode POSTs email and six-digit code", async () => {
+  const calls = [];
+  globalThis.fetch = async (url, init = {}) => {
+    calls.push({ url: String(url), init });
+    return new Response(
+      JSON.stringify({
+        message: "Your email is verified. Sign in with your password.",
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  };
+
+  const { verifySignupCode } = await vite.ssrLoadModule("/lib/auth/client.ts");
+  const result = await verifySignupCode(
+    "22701234@student.uwa.edu.au",
+    "123456",
+  );
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "http://localhost:8000/api/auth/verify-signup-code");
+  assert.equal(calls[0].init.method, "POST");
+  assert.deepEqual(JSON.parse(calls[0].init.body), {
+    email: "22701234@student.uwa.edu.au",
+    code: "123456",
+  });
+  assert.match(result.message.toLowerCase(), /verified/);
+});
+
+test("resendSignupCode POSTs email only", async () => {
+  const calls = [];
+  globalThis.fetch = async (url, init = {}) => {
+    calls.push({ url: String(url), init });
+    return new Response(
+      JSON.stringify({
+        message:
+          "If an account is pending confirmation, a new verification code has been sent.",
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  };
+
+  const { resendSignupCode } = await vite.ssrLoadModule("/lib/auth/client.ts");
+  const result = await resendSignupCode("22701234@student.uwa.edu.au");
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "http://localhost:8000/api/auth/resend-signup-code");
+  assert.equal(calls[0].init.method, "POST");
+  assert.deepEqual(JSON.parse(calls[0].init.body), {
+    email: "22701234@student.uwa.edu.au",
+  });
+  assert.match(result.message.toLowerCase(), /verification code/);
+});
+
+test("verifySignupCode surfaces invalid code errors", async () => {
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        detail: {
+          code: "UNAUTHORIZED",
+          message: "Invalid or expired verification code",
+        },
+      }),
+      { status: 401, headers: { "content-type": "application/json" } },
+    );
+
+  const { verifySignupCode, AuthApiError } = await vite.ssrLoadModule(
+    "/lib/auth/client.ts",
+  );
+
+  await assert.rejects(
+    () => verifySignupCode("22701234@student.uwa.edu.au", "000000"),
+    (error) => {
+      assert.ok(error instanceof AuthApiError);
+      assert.equal(error.message, "Invalid or expired verification code");
+      assert.equal(error.status, 401);
+      return true;
+    },
+  );
+});
 
 test("signIn POSTs email and password only", async () => {
   const calls = [];
