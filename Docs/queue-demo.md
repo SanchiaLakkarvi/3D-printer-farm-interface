@@ -52,3 +52,25 @@ Tests (from backend/):
 ```sh
 python -m pytest tests/test_queue_demo.py tests/test_demo_accounts.py tests/test_printer_sync.py tests/test_queue_timing.py -q
 ```
+
+### Run tests in Docker (PowerShell)
+
+From the repository root, after building the demo images:
+
+```powershell
+$composeFiles = @('-f', 'docker-compose.yml', '-f', 'docker-compose.demo.yml', '-f', 'docker-compose.queue-demo.yml')
+docker compose @composeFiles run --rm --no-deps -v "${PWD}/backend/tests:/app/tests:ro" --entrypoint python backend -m pytest tests/test_queue_demo.py tests/test_demo_accounts.py tests/test_printer_sync.py tests/test_queue_timing.py -q -p no:cacheprovider
+docker compose @composeFiles run --rm --no-deps -v "${PWD}/backend:/backend:ro" --entrypoint python mockserver -m pytest tests/test_queue_demo_config.py -q -p no:cacheprovider
+```
+
+The backend image excludes tests, so the first command mounts them read-only.
+The mock validation test also reads the backend demo script and G-code fixture,
+which the second command mounts read-only. These commands do not start another
+queue generator.
+
+If `docker` is not recognized with a per-user Docker Desktop installation, add
+its CLI directory to the current PowerShell session before running the commands:
+
+```powershell
+$env:Path = "$env:LOCALAPPDATA\Programs\DockerDesktop\resources\bin;$env:Path"
+```
