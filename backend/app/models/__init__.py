@@ -1,6 +1,7 @@
 """SQLAlchemy models matching the print-farm schema (Alembic head)."""
 
 from app.models.collection_record import CollectionRecord
+from app.models.job_event import JobEvent
 from app.models.enums import (
     CheckType,
     JobStatus,
@@ -20,6 +21,7 @@ __all__ = [
     "CheckType",
     "CollectionRecord",
     "JobStatus",
+    "JobEvent",
     "JobValidation",
     "MaintenanceLog",
     "Material",

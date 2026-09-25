@@ -20,7 +20,7 @@ from app.core.exceptions import AppError, BadRequestError
 from app.models.enums import JobStatus
 from app.models.print_job import PrintJob
 from app.models.user import User
-from app.services import storage_service
+from app.services import storage_service, tracking_service
 
 
 def _basename_only(filename: str | None) -> str:
@@ -155,6 +155,8 @@ def upload_gcode(
     )
     db.add(job)
     try:
+        db.flush()
+        tracking_service.initialize(db, job)
         db.commit()
         db.refresh(job)
     except Exception:

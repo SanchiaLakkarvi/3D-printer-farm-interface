@@ -31,6 +31,7 @@ from app.models.enums import JobStatus, NotificationType, PrinterStatus
 from app.models.notification import Notification
 from app.models.print_job import PrintJob
 from app.models.printer import Printer
+from app.services.tracking_service import record
 
 log = logging.getLogger(__name__)
 
@@ -80,6 +81,7 @@ def _active_job(db: Session, printer: Printer) -> PrintJob | None:
 
 def _finish(db: Session, job: PrintJob, ok: bool, reason: str, now: datetime) -> None:
     job.status = JobStatus.COMPLETED if ok else JobStatus.FAILED
+    record(db, job, "COMPLETED" if ok else "FAILED")
     job.completed_at = now
     if ok:
         job.actual_filament_g = job.est_filament_g
@@ -113,6 +115,17 @@ def _apply_active_job(db: Session, job: PrintJob, snap: PrinterSnapshot, now: da
 
 
 def _dispatch_next(db: Session, printer: Printer, port: PrinterPort, now: datetime) -> None:
+    # Serialize competing workers on the existing printer row. Persist the claim
+    # before network I/O: a crash or lost response must never cause a blind retry.
+    db.execute(select(Printer.id).where(Printer.id == printer.id).with_for_update()).one()
+    blocked = db.scalar(select(PrintJob.id).where(
+        PrintJob.printer_id == printer.id,
+        (PrintJob.status == JobStatus.PRINTING)
+        | PrintJob.submission_state.in_(["sending", "unknown"]),
+    ).limit(1))
+    if blocked is not None:
+        db.commit()
+        return
     job = db.scalars(
         select(PrintJob)
         .where(
@@ -120,18 +133,34 @@ def _dispatch_next(db: Session, printer: Printer, port: PrinterPort, now: dateti
             PrintJob.status.in_([JobStatus.SUBMITTED, JobStatus.QUEUED]),
         )
         .order_by(PrintJob.submitted_at.asc())
+        .execution_options(populate_existing=True)
     ).first()
     if job is None:
+        db.commit()
         return
+    if job.submission_state == "submitted":
+        db.commit()
+        return
+    job.submission_state = "sending"
+    db.commit()
     try:
         port.upload_and_start(f"{job.id}.gcode", Path(job.gcode_path))
     except PrinterConflictError:
+        # A definitive refusal did not start this job; retry when free.
+        job.submission_state = "pending"
+        db.commit()
         return
     except (PrinterError, OSError) as exc:
+        job.submission_state = "unknown"
+        record(db, job, "SUBMISSION_UNKNOWN")
+        db.commit()
         log.warning("Could not start job %s on printer %s: %s", job.id, printer.id, exc)
         return
 
+    job.submission_state = "submitted"
+    record(db, job, "SUBMITTED")
     job.status = JobStatus.PRINTING
+    record(db, job, "PRINTING")
     job.started_at = now
     printer.status = PrinterStatus.PRINTING
     _notify(db, job, NotificationType.JOB_STARTED, "Your print has started.", now)

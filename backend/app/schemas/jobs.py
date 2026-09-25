@@ -122,6 +122,8 @@ class GcodeValidationResponse(BaseModel):
 
 
 class JobSubmissionResponse(BaseModel):
+    tracking_url: str
+    submission_id: uuid.UUID
     job_id: uuid.UUID
     filename: str
     status: JobStatus

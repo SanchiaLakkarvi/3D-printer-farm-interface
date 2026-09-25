@@ -229,3 +229,75 @@ backend/
 ├── alembic.ini
 └── Dockerfile
 ```
+
+
+## QR job tracking and submission retries
+
+Install dependencies and migrate before starting the existing backend:
+
+```powershell
+cd backend
+.venv/Scripts/python.exe -m pip install -r requirements.txt
+.venv/Scripts/python.exe -m alembic upgrade head
+.venv/Scripts/python.exe -m pytest tests -q
+```
+
+Migration `0007_job_tracking` merges the existing upload and printer/timing
+migration heads. It backfills tracking paths, known current status and submission
+identifiers. Historical transitions are not invented; older QR images are generated
+and saved on first read. New jobs save an SVG QR immediately. The payload is only
+`/api/jobs/{uuid}`; no file contents, credentials or printer commands are encoded.
+
+Authenticated endpoints:
+
+- `POST /api/jobs`: existing multipart request, optionally with a UUID
+  `Idempotency-Key` header. Generate this once per intended submission and reuse it
+  on HTTP retries. An identical request returns the same job; changed contents or
+  selections with the same key return 409. Omitting the header preserves existing
+  behavior: each HTTP request creates a new job.
+- `GET /api/jobs/{job_id}/qr`: saved QR as `image/svg+xml`.
+- `GET /api/jobs/{job_id}`: tracking status, queue status, submission state and events.
+- `GET /api/jobs/tracking?identifier=/api/jobs/{job_id}`: scan lookup; also accepts
+  a bare UUID or `/jobs/{uuid}`. Students can read only their own jobs; farmers/admins
+  can read all jobs. QR possession does not bypass authentication.
+- `POST /api/jobs/{job_id}/collect`: farmer/admin action for completed or ready jobs.
+  Repeated calls are idempotent. Writes READY_FOR_COLLECTION and COLLECTED events
+  and the existing collection record. Operational job status remains unchanged so
+  print-history and statistics retain their existing behavior.
+
+Tracking events are separate from queue status. New accepted submissions record
+CREATED, VALIDATING, QUEUED and ASSIGNED; successful printer dispatch records
+SUBMITTED and PRINTING; printer completion records COMPLETED (or FAILED).
+The upload-only flow records CREATED until further processing occurs.
+
+Dispatch serializes claims with a PostgreSQL printer-row lock and commits `sending`
+before any printer upload. Repeated worker/task invocations do not resend a claimed
+or successfully submitted job. A definitive printer conflict releases the claim for
+retry. A transport or other uncertain failure becomes `unknown` with a
+SUBMISSION_UNKNOWN event. Both `sending` and `unknown` hold that printer's queue.
+This checkout uses the existing FastAPI polling loop, not Celery; any external
+Celery wrapper must call the same sync service to use this protection.
+
+PrusaLink has no receiver-side idempotency contract, so exactly-once delivery cannot
+be guaranteed across a lost response. Do not automatically reset unknown claims.
+For recovery, stop polling/workers for that printer, inspect its job/file history
+(the remote filename is `{job_id}.gcode`) and confirm whether it accepted the job.
+An operator must reconcile the database status and tracking history with that
+confirmed outcome before resuming: retain `submitted` for accepted jobs, or return
+to `pending` only after proving it was never accepted. A `sending` claim left by a
+crashed worker requires the same review. Never infer nonacceptance merely from an
+idle printer. This deliberately favors avoiding duplicate physical prints.
+
+Focused tests:
+
+```powershell
+.venv/Scripts/python.exe -m pytest tests/test_job_tracking.py tests/test_printer_sync.py tests/test_submission.py tests/test_jobs_upload.py -q
+```
+
+The tests cover QR payload/generation, unique IDs, authenticated scan lookup,
+HTTP retry reuse, repeated and overlapping dispatch calls, lost responses, worker
+crashes, status history and idempotent collection. SQLite tests do not validate
+PostgreSQL row-lock behavior. The existing migration smoke test is opt-in: set
+`DATABASE_URL` to a disposable PostgreSQL database and `RUN_ALEMBIC_SMOKE=1`, then
+run `pytest tests/test_alembic_smoke.py -q`. It drops that database's public schema and also tests concurrent dispatch using
+two PostgreSQL sessions.

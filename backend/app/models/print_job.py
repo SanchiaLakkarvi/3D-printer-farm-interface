@@ -44,8 +44,15 @@ class PrintJob(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
+        default=uuid.uuid4,
         server_default=text("gen_random_uuid()"),
     )
+    request_fingerprint: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tracking_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    qr_svg: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tracking_status: Mapped[str | None] = mapped_column(Text, nullable=True)
+    submission_id: Mapped[uuid.UUID] = mapped_column(default=uuid.uuid4, unique=True)
+    submission_state: Mapped[str] = mapped_column(Text, default="pending")
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", name="print_jobs_user_id_fkey"),
         nullable=False,

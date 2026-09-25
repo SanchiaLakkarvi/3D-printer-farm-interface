@@ -14,6 +14,8 @@ class JobUploadOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+    tracking_url: str
+    submission_id: uuid.UUID
     id: uuid.UUID
     status: JobStatus
     original_filename: str

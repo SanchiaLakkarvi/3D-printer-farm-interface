@@ -59,10 +59,11 @@ def test_alembic_upgrade_head_on_empty_database() -> None:
             "collection_records",
             "maintenance_logs",
             "alembic_version",
+            "job_events",
         } <= tables
 
         version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        assert version == "0005_print_jobs_pending_selection_upload"
+        assert version == "0007_job_tracking"
 
         user_cols = {
             row[0]
@@ -122,3 +123,48 @@ def test_alembic_upgrade_head_on_empty_database() -> None:
             )
         ).scalar_one()
         assert material_nullable == "YES"
+
+
+# Reuse the existing fixture to create valid users, printers and queued jobs.
+from tests.test_printer_sync import world
+
+
+def test_postgres_concurrent_dispatch_claim(world) -> None:
+    """Run after migration smoke against the same disposable PostgreSQL DB."""
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    from sqlalchemy import select
+    from sqlalchemy.orm import Session
+    from app.db.base import Base
+    from app.models.print_job import PrintJob
+    from app.models.printer import Printer
+    from app.services.printer_sync_service import _dispatch_next
+    from tests.test_printer_sync import FakePort, NOW
+
+    source, printer, make_job = world
+    first = make_job(minutes_ago=10)
+    make_job(minutes_ago=1)
+    printer_id, first_id = printer.id, first.id
+    engine = create_engine(os.environ["DATABASE_URL"])
+    try:
+        with engine.begin() as connection:
+            for table in Base.metadata.sorted_tables:
+                rows = [dict(row) for row in source.execute(select(table)).mappings()]
+                if rows:
+                    connection.execute(table.insert(), rows)
+        barrier = Barrier(2)
+        ports = [FakePort(), FakePort()]
+        def dispatch(port):
+            with Session(engine) as db:
+                target = db.get(Printer, printer_id)
+                barrier.wait(timeout=10)
+                _dispatch_next(db, target, port, NOW)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(dispatch, port) for port in ports]
+            for future in futures:
+                future.result(timeout=20)
+        assert sum(len(port.uploads) for port in ports) == 1
+        with Session(engine) as db:
+            assert db.get(PrintJob, first_id).submission_state == "submitted"
+    finally:
+        engine.dispose()

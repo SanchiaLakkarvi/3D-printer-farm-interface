@@ -8,6 +8,7 @@ queues the job.
 from __future__ import annotations
 
 import os
+import hashlib
 import re
 import tempfile
 import uuid
@@ -38,6 +39,7 @@ from app.schemas.jobs import (
     ValidationStageOut,
 )
 from app.services.job_service import refresh_queue_estimates
+from app.services import tracking_service
 from app.services.pricing_service import calculate_print_cost
 from app.validation.gcode_validator import validate_upload as run_validator
 
@@ -133,8 +135,20 @@ def submit_job(
     data: bytes,
     printer_id: uuid.UUID,
     material_id: uuid.UUID,
+    submission_id: uuid.UUID | None = None,
 ) -> JobSubmissionResponse:
     """Validate, store and queue a job for the chosen printer and material."""
+    fingerprint = hashlib.sha256(
+        str(printer_id).encode() + str(material_id).encode() + filename.encode() + hashlib.sha256(data).digest()
+    ).hexdigest()
+    if submission_id is not None:
+        # Serialize repeated HTTP requests by owner without changing queue ordering.
+        db.execute(select(User.id).where(User.id == user.id).with_for_update()).one()
+        existing = db.scalar(select(PrintJob).where(PrintJob.submission_id == submission_id))
+        if existing is not None:
+            if existing.user_id != user.id or existing.request_fingerprint != fingerprint:
+                raise ConflictError("Idempotency-Key was already used for another submission.")
+            return _submission_response(existing)
     printer = db.get(Printer, printer_id)
     if printer is None:
         raise NotFoundError("Printer", str(printer_id))
@@ -185,6 +199,9 @@ def submit_job(
     now = datetime.now(timezone.utc)
     job = PrintJob(
         id=job_id,
+        submission_id=submission_id or uuid.uuid4(),
+        request_fingerprint=fingerprint,
+        original_filename=safe_name,
         user_id=user.id,
         printer_id=printer.id,
         material_id=material.id,
@@ -210,6 +227,10 @@ def submit_job(
         for kind, message in passed_checks.items()
     )
     try:
+        db.flush()
+        tracking_service.initialize(db, job)
+        for status in ("VALIDATING", "QUEUED", "ASSIGNED"):
+            tracking_service.record(db, job, status)
         db.commit()
     except Exception:
         db.rollback()
@@ -219,14 +240,20 @@ def submit_job(
 
     refresh_queue_estimates(db)
     db.refresh(job)
+    return _submission_response(job)
+
+
+def _submission_response(job: PrintJob) -> JobSubmissionResponse:
     return JobSubmissionResponse(
         job_id=job.id,
-        filename=safe_name,
+        tracking_url=job.tracking_url,
+        submission_id=job.submission_id,
+        filename=job.original_filename or os.path.basename(job.gcode_path),
         status=job.status,
-        printer_id=printer.id,
-        est_duration_min=duration,
+        printer_id=job.printer_id,
+        est_duration_min=job.est_duration_min,
         est_filament_g=job.est_filament_g,
-        estimated_cost_usd=calculate_print_cost(duration),
+        estimated_cost_usd=calculate_print_cost(job.est_duration_min),
         est_start_time=job.est_start_at,
         est_completion_time=job.est_completion_at,
     )
