@@ -15,6 +15,7 @@ export type JobStatus =
 export type PrinterStatus = "idle" | "printing" | "error" | "offline" | "maintenance";
 
 export type QueueTile = {
+  department?: string | null;
   job_id: string;
   filename: string;
   status: JobStatus;

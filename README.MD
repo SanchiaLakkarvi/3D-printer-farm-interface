@@ -863,3 +863,9 @@ Once this workflow is stable, additional functionality can be built around it.
 ## Reference
 
 Requirements and scope in this README are based on the **3D Printer Farm Interface – Client Meeting Notes, 30 July 2026**.
+
+## Automated queue demo
+
+To submit a job every three minutes from rotating department test accounts, see
+[the queue demo guide](Docs/queue-demo.md). It runs against the local mock printer
+and shows the waiting jobs in the Shared queue.

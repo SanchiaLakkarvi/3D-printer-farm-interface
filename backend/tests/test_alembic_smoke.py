@@ -62,7 +62,7 @@ def test_alembic_upgrade_head_on_empty_database() -> None:
         } <= tables
 
         version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        assert version == "0005_print_jobs_pending_selection_upload"
+        assert version == "0007_merge_queue_upload"
 
         user_cols = {
             row[0]
