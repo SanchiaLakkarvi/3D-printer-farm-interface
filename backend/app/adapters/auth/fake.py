@@ -9,12 +9,17 @@ from app.adapters.auth.port import AuthSession
 from app.core.exceptions import ConflictError, UnauthorizedError
 
 
+# Deterministic OTP for Fake Auth tests (matches UI 6-digit entry).
+FAKE_SIGNUP_OTP = "123456"
+
+
 @dataclass
 class _AuthRecord:
     user_id: UUID
     password: str
     confirmed: bool
     metadata: dict[str, str] = field(default_factory=dict)
+    signup_otp: str = FAKE_SIGNUP_OTP
 
 
 class FakeAuthAdapter:
@@ -26,6 +31,7 @@ class FakeAuthAdapter:
         self._confirm_tokens: dict[str, str] = {}
         self.last_email_redirect_to: str | None = None
         self.last_confirm_token_hash: str | None = None
+        self.last_resend_email: str | None = None
 
     def register(
         self,
@@ -51,6 +57,7 @@ class FakeAuthAdapter:
                 "last_name": last_name,
                 "department": department,
             },
+            signup_otp=FAKE_SIGNUP_OTP,
         )
         # Deterministic token for tests: confirm via token_hash without auto-confirm on register.
         self._confirm_tokens[f"confirm-{normalized}"] = normalized
@@ -77,6 +84,33 @@ class FakeAuthAdapter:
         if email is None:
             raise UnauthorizedError("Invalid or expired confirmation link")
         self.confirm_email(email)
+
+    def confirm_signup_otp(self, *, email: str, token: str) -> None:
+        """Confirm via emailed 6-digit OTP issued at register."""
+        normalized = email.strip().lower()
+        record = self._by_email.get(normalized)
+        if record is None or record.signup_otp != token.strip():
+            raise UnauthorizedError("Invalid or expired verification code")
+        if record.confirmed:
+            raise UnauthorizedError("Invalid or expired verification code")
+        record.confirmed = True
+
+    def resend_signup(
+        self,
+        *,
+        email: str,
+        email_redirect_to: str | None = None,
+    ) -> None:
+        """Refresh OTP for an unconfirmed registered email (test no-op refresh)."""
+        self.last_email_redirect_to = email_redirect_to
+        normalized = email.strip().lower()
+        self.last_resend_email = normalized
+        record = self._by_email.get(normalized)
+        if record is None:
+            raise UnauthorizedError("Invalid or expired verification code")
+        if record.confirmed:
+            raise UnauthorizedError("Invalid or expired verification code")
+        record.signup_otp = FAKE_SIGNUP_OTP
 
     def sign_in(self, *, email: str, password: str) -> AuthSession:
         normalized = email.strip().lower()

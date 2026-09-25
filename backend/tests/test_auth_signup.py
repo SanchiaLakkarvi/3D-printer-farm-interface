@@ -29,6 +29,7 @@ def test_student_signup_pending_does_not_create_users_row(
     body = response.json()
     assert body["email"] == "22701234@student.uwa.edu.au"
     assert "check your email" in body["message"].lower()
+    assert "six-digit" in body["message"].lower()
     assert "id" not in body
     assert "role" not in body
     assert "password" not in body
@@ -214,5 +215,139 @@ def test_confirm_email_rejects_unknown_token(auth_client: TestClient) -> None:
     response = auth_client.post(
         "/api/auth/confirm-email",
         json={"token_hash": "missing-token-hash-xx", "type": "signup"},
+    )
+    assert response.status_code == 401
+
+
+def test_verify_signup_code_then_signin_creates_profile(
+    auth_client: TestClient,
+    db_session: Session,
+) -> None:
+    email = "22705555@student.uwa.edu.au"
+    assert (
+        auth_client.post(
+            "/api/auth/signup",
+            json={
+                "first_name": "Ada",
+                "last_name": "Lovelace",
+                "email": email,
+                "password": "secure-password-1",
+                "department": "engineering",
+            },
+        ).status_code
+        == 201
+    )
+
+    verify = auth_client.post(
+        "/api/auth/verify-signup-code",
+        json={"email": email, "code": "123456"},
+    )
+    assert verify.status_code == 200
+    assert "verified" in verify.json()["message"].lower()
+    assert (
+        db_session.scalar(select(User).where(User.email == email)) is None
+    )
+
+    response = auth_client.post(
+        "/api/auth/signin",
+        json={"email": email, "password": "secure-password-1"},
+    )
+    assert response.status_code == 200
+    assert response.json()["user"]["email"] == email
+    assert (
+        db_session.scalar(select(User).where(User.email == email)) is not None
+    )
+
+
+def test_verify_signup_code_rejects_invalid_code(auth_client: TestClient) -> None:
+    email = "22704444@student.uwa.edu.au"
+    assert (
+        auth_client.post(
+            "/api/auth/signup",
+            json={
+                "first_name": "Ada",
+                "last_name": "Lovelace",
+                "email": email,
+                "password": "secure-password-1",
+                "department": "engineering",
+            },
+        ).status_code
+        == 201
+    )
+    response = auth_client.post(
+        "/api/auth/verify-signup-code",
+        json={"email": email, "code": "000000"},
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"]["code"] == "UNAUTHORIZED"
+
+
+def test_verify_signup_code_rejects_non_digit_code(auth_client: TestClient) -> None:
+    response = auth_client.post(
+        "/api/auth/verify-signup-code",
+        json={"email": "22703333@student.uwa.edu.au", "code": "abcdef"},
+    )
+    assert response.status_code == 422
+
+
+def test_verify_signup_code_alone_does_not_create_users_row(
+    auth_client: TestClient,
+    db_session: Session,
+) -> None:
+    email = "22702222@student.uwa.edu.au"
+    assert (
+        auth_client.post(
+            "/api/auth/signup",
+            json={
+                "first_name": "Ada",
+                "last_name": "Lovelace",
+                "email": email,
+                "password": "secure-password-1",
+                "department": "engineering",
+            },
+        ).status_code
+        == 201
+    )
+    assert (
+        auth_client.post(
+            "/api/auth/verify-signup-code",
+            json={"email": email, "code": "123456"},
+        ).status_code
+        == 200
+    )
+    assert db_session.scalar(select(User).where(User.email == email)) is None
+
+
+def test_resend_signup_code_refreshes_otp(
+    auth_client: TestClient,
+    auth_adapter: FakeAuthAdapter,
+) -> None:
+    email = "22701111@student.uwa.edu.au"
+    assert (
+        auth_client.post(
+            "/api/auth/signup",
+            json={
+                "first_name": "Ada",
+                "last_name": "Lovelace",
+                "email": email,
+                "password": "secure-password-1",
+                "department": "engineering",
+            },
+        ).status_code
+        == 201
+    )
+    response = auth_client.post(
+        "/api/auth/resend-signup-code",
+        json={"email": email},
+    )
+    assert response.status_code == 200
+    assert "verification code" in response.json()["message"].lower()
+    assert auth_adapter.last_resend_email == email
+
+
+def test_resend_signup_code_rejects_unknown_email(auth_client: TestClient) -> None:
+    response = auth_client.post(
+        "/api/auth/resend-signup-code",
+        json={"email": "22700000@student.uwa.edu.au"},
     )
     assert response.status_code == 401

@@ -21,10 +21,14 @@ STUDENT_EMAIL_RE = re.compile(
 )
 
 SIGNUP_PENDING_MESSAGE = (
-    "Check your email to confirm your account, then sign in."
+    "Check your email for a six-digit verification code, then enter it to confirm."
 )
 
 EMAIL_CONFIRM_OK_MESSAGE = "Your email is verified. Sign in with your password."
+
+SIGNUP_CODE_RESENT_MESSAGE = (
+    "If an account is pending confirmation, a new verification code has been sent."
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +102,31 @@ def confirm_student_email(
     """Exchange confirmation token_hash. Does not create a session or profile."""
     auth.confirm_email_token(token_hash=token_hash, type=type)
     return EmailConfirmResult()
+
+
+def verify_signup_code(
+    *,
+    auth: AuthPort,
+    email: str,
+    code: str,
+) -> EmailConfirmResult:
+    """Verify emailed 6-digit signup OTP. Does not create a session or profile."""
+    auth.confirm_signup_otp(email=email.strip().lower(), token=code.strip())
+    return EmailConfirmResult()
+
+
+def resend_signup_code(
+    *,
+    auth: AuthPort,
+    email: str,
+    email_redirect_to: str | None = None,
+) -> EmailConfirmResult:
+    """Resend signup confirmation OTP. Does not create a session or profile."""
+    auth.resend_signup(
+        email=email.strip().lower(),
+        email_redirect_to=email_redirect_to,
+    )
+    return EmailConfirmResult(message=SIGNUP_CODE_RESENT_MESSAGE)
 
 
 def _metadata_str(metadata: object, key: str) -> str | None:

@@ -3,7 +3,7 @@ import "./upload.css";
 import "./farm.css";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, BarChart3, Bell, CheckCircle2, CircleHelp, CreditCard, FileText, Gauge, GraduationCap, HardHat, LayoutDashboard, LockKeyhole, LogOut, Mail, Menu, Printer, ShieldCheck, Sparkles, Upload, UserCog, Users, Wrench, X, Eye, EyeOff, Building2 } from "lucide-react";
-import { AuthApiError, AUTH_GENERIC_ERROR, getApiBaseUrl, resolveDepartment, restoreSession, signInWithRoleMatch, signOut, signupStudent, type UserProfile } from "@/lib/auth/client";
+import { AuthApiError, AUTH_GENERIC_ERROR, resolveDepartment, resendSignupCode, restoreSession, signInWithRoleMatch, signOut, signupStudent, verifySignupCode, type UserProfile } from "@/lib/auth/client";
 import { clearAccessToken } from "@/lib/auth/session";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { LiveDashboard } from "@/components/farm/live-dashboard";
@@ -98,31 +98,6 @@ function VerifyStory() {
 type LP = { role: Role; email: string; password: string; show: boolean; error: string; notice?: string; pending: boolean; setEmail: (x: string) => void; setPassword: (x: string) => void; setShow: (x: boolean) => void; submit: (e: FormEvent) => void; back: () => void; signup?: () => void };
 function Login(p: LP) { const r = roles[p.role], Icon = r.icon; const emailHint = p.role === "student" ? `Use your ${r.domain} email` : "Use the email on your Print Farm account"; return <main className="auth split"><section className="story"><Brand /><div><span>UWA 3D PRINT FARM</span><h1>Turn your design<br />into something real.</h1><p>A simple way to submit, track and collect your UWA 3D prints.</p><div className="steps"><b>01<small>Upload G-code</small></b><b>02<small>Join the queue</small></b><b>03<small>Collect your print</small></b></div></div></section><section className="formside"><div className="formcard"><button className="back" onClick={p.back}><ArrowLeft />Back</button><i className={"roleicon " + p.role}><Icon /></i><span className="kicker">{r.title} access</span><h2>Welcome back</h2><p>Sign in with your UWA account to continue.</p><form onSubmit={p.submit}><label>Email address<div className="input"><Mail /><input type="email" value={p.email} onChange={e => p.setEmail(e.target.value)} placeholder={r.domain} required /></div><small>{emailHint}</small></label><label>Password<div className="input"><LockKeyhole /><input type={p.show ? "text" : "password"} value={p.password} onChange={e => p.setPassword(e.target.value)} placeholder="Enter your password" required /><button type="button" onClick={() => p.setShow(!p.show)}>{p.show ? <EyeOff /> : <Eye />}</button></div></label>{p.notice && <div className="notice">{p.notice}</div>}{p.error && <div className="error">{p.error}</div>}<button className="primary" disabled={p.pending}>{p.pending ? "Signing in…" : <>Sign in <ArrowRight /></>}</button></form>{p.role === "student" && p.signup ? <div className="join">New to the Print Farm? <button type="button" onClick={p.signup}>Create a student account</button></div> : <div className="staff"><ShieldCheck />{r.title} accounts are issued by an authorised administrator.</div>}</div></section></main> }
 
-async function signupCodeRequest(path: string, payload: object): Promise<{ message: string }> {
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const body: unknown = await response.json().catch(() => null);
-  if (!response.ok) {
-    const detail = body && typeof body === "object" && "detail" in body ? body.detail : null;
-    const message = typeof detail === "string" ? detail :
-      detail && typeof detail === "object" && "message" in detail && typeof detail.message === "string"
-        ? detail.message : AUTH_GENERIC_ERROR;
-    throw new AuthApiError(message, response.status);
-  }
-  const message = body && typeof body === "object" && "message" in body && typeof body.message === "string"
-    ? body.message : "";
-  return { message };
-}
-function verifySignupCode(email: string, code: string) {
-  return signupCodeRequest("/api/auth/verify-signup-code", { email, code });
-}
-function resendSignupCode(email: string) {
-  return signupCodeRequest("/api/auth/resend-signup-code", { email });
-}
-
 function Signup({ back, goSignIn }: { back: () => void; goSignIn: (email: string, message: string) => void }) {
   const [f, setF] = useState({ first: "", last: "", email: "", dept: "", other: "", pass: "" });
   const [err, setErr] = useState("");
@@ -212,10 +187,13 @@ function Signup({ back, goSignIn }: { back: () => void; goSignIn: (email: string
             </button>
           </form>
           <div className="verify-links">
-            <button type="button" disabled={pending || resendWait > 0} onClick={resend}>
+            <button type="button" className="verify-link" disabled={pending || resendWait > 0} onClick={resend}>
               {resendWait > 0 ? `Resend code in ${resendWait}s` : "Resend code"}
             </button>
-            <button type="button" onClick={() => { setPendingEmail(null); setCode(""); setErr(""); setVerifyNotice(""); }}>Change email</button>
+            <span className="verify-links-sep" aria-hidden="true">·</span>
+            <button type="button" className="verify-link" onClick={() => { setPendingEmail(null); setCode(""); setErr(""); setVerifyNotice(""); setResendWait(0); setPending(false); }}>
+              Change email
+            </button>
           </div>
         </div>
       </section>
