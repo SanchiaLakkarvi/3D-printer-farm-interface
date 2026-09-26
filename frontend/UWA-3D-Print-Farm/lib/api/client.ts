@@ -85,6 +85,17 @@ export type JobSubmission = {
   est_completion_time: string | null;
 };
 
+export type NotificationType = "job_started" | "job_completed" | "job_error" | "ready_for_collection";
+
+export type AppNotification = {
+  id: string;
+  job_id: string | null;
+  type: NotificationType;
+  message: string;
+  is_read: boolean;
+  sent_at: string;
+};
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -142,6 +153,10 @@ export const api = {
   materials: () => request<Material[]>("/materials"),
   validate: (file: File) =>
     request<GcodeValidation>("/jobs/validate", { method: "POST", body: uploadForm(file) }),
+  notifications: () => request<AppNotification[]>("/notifications"),
+  unreadCount: () => request<{ count: number }>("/notifications/unread-count"),
+  markRead: (id: string) => request<AppNotification>(`/notifications/${id}/read`, { method: "PATCH" }),
+  markAllRead: () => request<{ count: number }>("/notifications/read-all", { method: "POST" }),
   submit: (file: File, printerId: string, materialId: string) =>
     request<JobSubmission>("/jobs", {
       method: "POST",

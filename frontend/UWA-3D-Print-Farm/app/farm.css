@@ -24,3 +24,17 @@ em.p-offline,em.p-maintenance,em.s-removed{background:#eef0f3;color:#5d6b7c}
 .farm-choose select{height:42px;border:1px solid #d5dde5;border-radius:10px;padding:0 10px;font-size:12px;background:#fff}
 .farm-actions{display:flex;gap:10px;flex-wrap:wrap}.farm-actions .primary{width:auto;padding:0 22px}
 .farm-secondary{height:49px;border-radius:11px;border:1px solid #d5dde5;background:#fff;padding:0 20px;font-weight:700;font-size:12px;cursor:pointer}
+.farm-bell{position:relative;width:40px;height:40px;border:1px solid #e0e6eb;border-radius:11px;background:#fff;color:var(--navy);display:grid;place-items:center;cursor:pointer}
+.farm-bell:hover{background:#f4fbfd}.farm-bell svg{width:18px}
+.farm-bell b{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#d9423b;color:#fff;font-size:9px;line-height:18px;text-align:center;box-shadow:0 0 0 2px #fff}
+.farm-notes{list-style:none;margin:0;padding:0}
+.farm-notes button{width:100%;border:0;border-top:1px solid #edf1f4;background:none;display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:11px;padding:12px 8px;text-align:left;cursor:pointer;border-radius:0}
+.farm-notes button:disabled{cursor:default}
+.farm-notes button.unread{background:#f4fbfd}.farm-notes button.unread b::after{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--blue);margin-left:7px;vertical-align:middle}
+.farm-notes i{width:34px;height:34px;border-radius:9px;background:#e9f5fa;color:var(--blue);display:grid;place-items:center}.farm-notes i svg{width:16px}
+.farm-notes .t-job_completed i,.farm-notes .t-ready_for_collection i{background:#e5f7ef;color:#0b7c59}
+.farm-notes .t-job_error i{background:#fff0ef;color:#ac312c}
+.farm-notes b,.farm-notes small{display:block}.farm-notes b{font-size:10px;color:var(--navy)}
+.farm-notes small{font-size:10px;color:#556478;margin-top:4px;line-height:1.5;overflow-wrap:anywhere}
+.farm-notes time{font-size:9px;color:#8793a1;white-space:nowrap}
+@media(max-width:620px){.farm-notes button{grid-template-columns:30px 1fr;padding:12px 4px}.farm-notes time{grid-column:2}}
