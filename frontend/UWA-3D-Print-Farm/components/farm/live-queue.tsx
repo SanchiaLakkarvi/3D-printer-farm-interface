@@ -1,6 +1,8 @@
 "use client";
 
-import { api } from "@/lib/api/client";
+import { useState } from "react";
+import { Pause, Play } from "lucide-react";
+import { api, type QueueTile } from "@/lib/api/client";
 import { formatDuration, formatWhen, jobStatusLabel, PRINTER_LABELS } from "@/lib/api/format";
 import { usePolled } from "./use-polled";
 
@@ -20,7 +22,25 @@ export function LiveQueue({ role, view }: Props) {
   const history = usePolled(api.history, POLL_MS * 3);
   const printers = usePolled(api.printers, POLL_MS);
   const showPrinters = view === "Farm operations" || view === "Shared queue";
+  const canControl = role !== "student";
+  const [busyJob, setBusyJob] = useState<string | null>(null);
+  const [actionError, setActionError] = useState("");
   const error = queue.error ?? history.error;
+
+  /** The printer takes the command now; the queue shows the new state after the next printer poll (~2 s). */
+  async function control(job: QueueTile) {
+    setBusyJob(job.job_id);
+    setActionError("");
+    try {
+      await (job.paused ? api.resumeJob(job.job_id) : api.pauseJob(job.job_id));
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      await queue.reload();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not reach the printer.");
+    } finally {
+      setBusyJob(null);
+    }
+  }
 
   return (
     <>
@@ -31,7 +51,7 @@ export function LiveQueue({ role, view }: Props) {
           <p>{COPY[view]}</p>
         </div>
       </div>
-      {error && <div className="error farm-banner">{error.message}</div>}
+      {(error || actionError) && <div className="error farm-banner">{actionError || error?.message}</div>}
 
       {showPrinters && (
         <div className="farm-printers">
@@ -51,7 +71,7 @@ export function LiveQueue({ role, view }: Props) {
         <div className="farm-scroll">
           <table className="farm-table">
             <thead>
-              <tr><th>File</th><th>Department</th><th>Printer</th><th>Status</th><th>Duration</th><th>Est. start</th><th>Est. completion</th></tr>
+              <tr><th>File</th><th>Department</th><th>Printer</th><th>Status</th><th>Duration</th><th>Est. start</th><th>Est. completion</th>{canControl && <th>Actions</th>}</tr>
             </thead>
             <tbody>
               {(queue.data ?? []).map((j) => (
@@ -59,14 +79,23 @@ export function LiveQueue({ role, view }: Props) {
                   <td>{j.filename}</td>
                   <td>{j.department ?? "—"}</td>
                   <td>{j.assigned_printer ? `${j.assigned_printer.model}` : "Awaiting printer"}</td>
-                  <td><em className={`s-${j.status}`}>{jobStatusLabel(j.status)}</em></td>
+                  <td>{j.paused ? <em className="s-paused">Paused</em> : <em className={`s-${j.status}`}>{jobStatusLabel(j.status)}</em>}</td>
                   <td>{j.est_duration_formatted}{j.duration_is_default ? " (assumed)" : ""}</td>
                   <td>{formatWhen(j.est_start_time)}</td>
                   <td>{formatWhen(j.est_completion_time)}</td>
+                  {canControl && (
+                    <td>
+                      {j.status === "printing" && (
+                        <button className="farm-control" onClick={() => void control(j)} disabled={busyJob !== null}>
+                          {j.paused ? <><Play />Resume</> : <><Pause />Pause</>}
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
-              {queue.data && queue.data.length === 0 && <tr><td colSpan={7} className="farm-empty">The queue is empty.</td></tr>}
-              {queue.loading && <tr><td colSpan={7} className="farm-empty">Loading…</td></tr>}
+              {queue.data && queue.data.length === 0 && <tr><td colSpan={canControl ? 8 : 7} className="farm-empty">The queue is empty.</td></tr>}
+              {queue.loading && <tr><td colSpan={canControl ? 8 : 7} className="farm-empty">Loading…</td></tr>}
             </tbody>
           </table>
         </div>

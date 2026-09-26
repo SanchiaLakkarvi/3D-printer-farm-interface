@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Bell, CheckCircle2, PackageCheck, Printer } from "lucide-react";
+import { AlertTriangle, Bell, CheckCircle2, PackageCheck, Pause, Play, Printer } from "lucide-react";
 import { api, type AppNotification, type NotificationType } from "@/lib/api/client";
 import { formatWhen } from "@/lib/api/format";
 import { usePolled } from "./use-polled";
@@ -15,6 +15,8 @@ const ICONS: Record<NotificationType, typeof Bell> = {
   job_completed: CheckCircle2,
   job_error: AlertTriangle,
   ready_for_collection: PackageCheck,
+  job_paused: Pause,
+  job_resumed: Play,
 };
 
 const TITLES: Record<NotificationType, string> = {
@@ -22,6 +24,8 @@ const TITLES: Record<NotificationType, string> = {
   job_completed: "Print finished",
   job_error: "Print failed",
   ready_for_collection: "Ready to collect",
+  job_paused: "Print paused",
+  job_resumed: "Print resumed",
 };
 
 function useOnChanged(reload: () => Promise<void>) {
@@ -79,7 +83,7 @@ export function LiveNotifications({ role }: Props) {
         <div>
           <span>{role === "student" ? "Student" : role === "farmer" ? "Printer Farmer" : "Administrator"} portal</span>
           <h1>Notifications</h1>
-          <p>Updates on your print jobs: when they start, finish or fail. New messages appear here automatically.</p>
+          <p>Updates on your print jobs: when they start, pause, resume, finish or fail. New messages appear here automatically.</p>
         </div>
         {unread > 0 && <button onClick={() => void run(api.markAllRead)} disabled={busy}><CheckCircle2 />Mark all as read</button>}
       </div>

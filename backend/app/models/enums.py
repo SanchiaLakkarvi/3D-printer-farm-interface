@@ -44,6 +44,8 @@ class NotificationType(str, enum.Enum):
     JOB_COMPLETED = "job_completed"
     JOB_ERROR = "job_error"
     READY_FOR_COLLECTION = "ready_for_collection"
+    JOB_PAUSED = "job_paused"
+    JOB_RESUMED = "job_resumed"
 
 
 def _pg_enum(enum_cls: type[enum.Enum], name: str) -> SAEnum:

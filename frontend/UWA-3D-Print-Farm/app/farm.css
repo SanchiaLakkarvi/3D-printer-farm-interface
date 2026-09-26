@@ -38,3 +38,7 @@ em.p-offline,em.p-maintenance,em.s-removed{background:#eef0f3;color:#5d6b7c}
 .farm-notes small{font-size:10px;color:#556478;margin-top:4px;line-height:1.5;overflow-wrap:anywhere}
 .farm-notes time{font-size:9px;color:#8793a1;white-space:nowrap}
 @media(max-width:620px){.farm-notes button{grid-template-columns:30px 1fr;padding:12px 4px}.farm-notes time{grid-column:2}}
+em.s-paused{background:#fff4d9;color:#97620c}
+.farm-notes .t-job_paused i{background:#fff4d9;color:#97620c}
+.farm-control{height:30px;border:1px solid #b9d4df;border-radius:8px;background:#f4fbfd;color:var(--blue);font-size:10px;font-weight:800;padding:0 10px;display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap}
+.farm-control:hover{background:#e6f3f8}.farm-control:disabled{opacity:.55;cursor:default}.farm-control svg{width:13px}

@@ -50,6 +50,10 @@ class FakePort:
 
     def stop_job(self, job_id: int) -> None: ...
 
+    def pause_job(self, job_id: int) -> None: ...
+
+    def resume_job(self, job_id: int) -> None: ...
+
     def close(self) -> None:
         self.closed = True
 
@@ -225,6 +229,36 @@ def test_failure_messages_explain_why(world, state: PrinterState, reason: str) -
     make_job(JobStatus.PRINTING, started_at=NOW - timedelta(minutes=5))
     sync_printer(db, printer, FakePort(state), NOW)
     assert _messages(db)[0] == f"part.gcode on Prusa CORE One (Lab) failed: {reason}."
+
+
+def test_pause_and_resume_notify_the_owner_once_each(world) -> None:
+    db, printer, make_job = world
+    job = make_job(JobStatus.PRINTING, started_at=NOW - timedelta(minutes=5))
+
+    sync_printer(db, printer, FakePort(PrinterState.PAUSED), NOW)
+    sync_printer(db, printer, FakePort(PrinterState.PAUSED), NOW + timedelta(seconds=2))
+    assert _utc(job.paused_at) == NOW and job.status is JobStatus.PRINTING
+    assert printer.status is PrinterStatus.PRINTING
+
+    sync_printer(db, printer, FakePort(PrinterState.PRINTING), NOW + timedelta(seconds=4))
+    sync_printer(db, printer, FakePort(PrinterState.PRINTING), NOW + timedelta(seconds=6))
+    assert job.paused_at is None
+
+    assert _notifications(db) == [NotificationType.JOB_PAUSED, NotificationType.JOB_RESUMED]
+    assert _messages(db) == [
+        "part.gcode on Prusa CORE One (Lab) has been paused.",
+        "part.gcode on Prusa CORE One (Lab) has resumed printing.",
+    ]
+
+
+def test_job_that_ends_while_paused_clears_paused_at(world) -> None:
+    db, printer, make_job = world
+    job = make_job(JobStatus.PRINTING, started_at=NOW - timedelta(minutes=5))
+    sync_printer(db, printer, FakePort(PrinterState.PAUSED), NOW)
+    sync_printer(db, printer, FakePort(PrinterState.STOPPED), NOW + timedelta(seconds=2))
+
+    assert job.status is JobStatus.FAILED and job.paused_at is None
+    assert _notifications(db) == [NotificationType.JOB_PAUSED, NotificationType.JOB_ERROR]
 
 
 def test_unreachable_printer_goes_offline_and_jobs_are_untouched(world) -> None:

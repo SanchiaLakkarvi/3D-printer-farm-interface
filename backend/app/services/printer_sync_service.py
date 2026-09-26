@@ -89,6 +89,7 @@ def _active_job(db: Session, printer: Printer) -> PrintJob | None:
 def _finish(db: Session, job: PrintJob, ok: bool, reason: str, now: datetime) -> None:
     job.status = JobStatus.COMPLETED if ok else JobStatus.FAILED
     job.completed_at = now
+    job.paused_at = None
     if ok:
         job.actual_filament_g = job.est_filament_g
         _notify(db, job, NotificationType.JOB_COMPLETED, f"{_describe(job)} has finished printing.", now)
@@ -104,7 +105,15 @@ def _apply_active_job(db: Session, job: PrintJob, snap: PrinterSnapshot, now: da
     if snap.time_printing_s is not None:
         job.actual_duration_min = round(snap.time_printing_s / 60.0, 2)
 
-    if snap.state in _ACTIVE:
+    if snap.state is PrinterState.PAUSED:
+        if job.paused_at is None:
+            job.paused_at = now
+            _notify(db, job, NotificationType.JOB_PAUSED, f"{_describe(job)} has been paused.", now)
+        return
+    if snap.state is PrinterState.PRINTING:
+        if job.paused_at is not None:
+            job.paused_at = None
+            _notify(db, job, NotificationType.JOB_RESUMED, f"{_describe(job)} has resumed printing.", now)
         return
     if snap.state in _FAULT:
         # A printer in a fault state is never sent a new job, so this is genuine.

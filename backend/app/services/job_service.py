@@ -168,6 +168,7 @@ def get_print_queue(db: Session, user: User | None = None) -> list[QueueTileResp
                 est_completion_time=job.est_completion_at,
                 duration_is_default=not job.est_duration_min,
                 submitted_at=job.submitted_at,
+                paused=job.paused_at is not None,
             )
         )
 

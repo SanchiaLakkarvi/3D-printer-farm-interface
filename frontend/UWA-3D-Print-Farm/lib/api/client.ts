@@ -26,6 +26,7 @@ export type QueueTile = {
   est_completion_time: string | null;
   duration_is_default: boolean;
   submitted_at: string;
+  paused: boolean;
 };
 
 export type HistoryItem = {
@@ -85,7 +86,13 @@ export type JobSubmission = {
   est_completion_time: string | null;
 };
 
-export type NotificationType = "job_started" | "job_completed" | "job_error" | "ready_for_collection";
+export type NotificationType =
+  | "job_started"
+  | "job_completed"
+  | "job_error"
+  | "ready_for_collection"
+  | "job_paused"
+  | "job_resumed";
 
 export type AppNotification = {
   id: string;
@@ -157,6 +164,8 @@ export const api = {
   unreadCount: () => request<{ count: number }>("/notifications/unread-count"),
   markRead: (id: string) => request<AppNotification>(`/notifications/${id}/read`, { method: "PATCH" }),
   markAllRead: () => request<{ count: number }>("/notifications/read-all", { method: "POST" }),
+  pauseJob: (jobId: string) => request<{ job_id: string; action: string }>(`/jobs/${jobId}/pause`, { method: "POST" }),
+  resumeJob: (jobId: string) => request<{ job_id: string; action: string }>(`/jobs/${jobId}/resume`, { method: "POST" }),
   submit: (file: File, printerId: string, materialId: string) =>
     request<JobSubmission>("/jobs", {
       method: "POST",
