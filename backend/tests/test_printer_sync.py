@@ -95,6 +95,10 @@ def _notifications(db: Session) -> list[NotificationType]:
     return [n.type for n in db.scalars(select(Notification).order_by(Notification.sent_at))]
 
 
+def _messages(db: Session) -> list[str]:
+    return [n.message for n in db.scalars(select(Notification).order_by(Notification.sent_at))]
+
+
 def test_dispatches_oldest_queued_job_to_free_printer(world) -> None:
     db, printer, make_job = world
     older = make_job(minutes_ago=10)
@@ -185,6 +189,42 @@ def test_idle_printer_that_lost_the_job_fails_it(world) -> None:
     job = make_job(JobStatus.PRINTING, started_at=NOW - timedelta(minutes=5))
     sync_printer(db, printer, FakePort(PrinterState.IDLE), NOW)
     assert job.status is JobStatus.FAILED
+
+
+def test_messages_name_the_file_and_printer(world) -> None:
+    db, printer, make_job = world
+    job = make_job()
+    sync_printer(db, printer, FakePort(), NOW)
+    sync_printer(db, printer, FakePort(PrinterState.FINISHED), NOW + timedelta(minutes=5))
+
+    assert _messages(db) == [
+        "part.gcode on Prusa CORE One (Lab) has started printing.",
+        "part.gcode on Prusa CORE One (Lab) has finished printing.",
+    ]
+    assert job.status is JobStatus.COMPLETED
+
+
+def test_original_filename_is_preferred_in_messages(world) -> None:
+    db, printer, make_job = world
+    make_job(original_filename="rook.gcode")
+    sync_printer(db, printer, FakePort(), NOW)
+    assert _messages(db) == ["rook.gcode on Prusa CORE One (Lab) has started printing."]
+
+
+@pytest.mark.parametrize(
+    ("state", "reason"),
+    [
+        (PrinterState.ERROR, "the printer reported an error"),
+        (PrinterState.ATTENTION, "the printer needs attention"),
+        (PrinterState.STOPPED, "the print was stopped at the printer"),
+        (PrinterState.IDLE, "the printer is no longer running it"),
+    ],
+)
+def test_failure_messages_explain_why(world, state: PrinterState, reason: str) -> None:
+    db, printer, make_job = world
+    make_job(JobStatus.PRINTING, started_at=NOW - timedelta(minutes=5))
+    sync_printer(db, printer, FakePort(state), NOW)
+    assert _messages(db)[0] == f"part.gcode on Prusa CORE One (Lab) failed: {reason}."
 
 
 def test_unreachable_printer_goes_offline_and_jobs_are_untouched(world) -> None:
