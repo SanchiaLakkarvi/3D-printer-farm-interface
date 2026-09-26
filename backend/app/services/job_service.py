@@ -30,6 +30,10 @@ def _format_duration(duration_min: float | None) -> str:
     """Format duration in minutes into human-readable string e.g. '1h 45m' or '30m'."""
     if duration_min is None or duration_min <= 0:
         return "0m"
+    if duration_min < 60:
+        minutes, seconds = divmod(round(duration_min * 60), 60)
+        if seconds:
+            return f"{minutes}m {seconds}s"
     hours = int(duration_min // 60)
     mins = int(round(duration_min % 60))
     if hours > 0 and mins > 0:
@@ -155,6 +159,7 @@ def get_print_queue(db: Session, user: User | None = None) -> list[QueueTileResp
             QueueTileResponse(
                 job_id=job.id,
                 filename=filename,
+                department=job.department,
                 status=job.status,
                 assigned_printer=printer_summary,
                 est_duration_min=job.est_duration_min,

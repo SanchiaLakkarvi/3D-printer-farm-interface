@@ -62,7 +62,7 @@ def test_alembic_upgrade_head_on_empty_database() -> None:
         } <= tables
 
         version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        assert version == "0004_users_auth_profile_supabase_model"
+        assert version == "0007_merge_queue_upload"
 
         user_cols = {
             row[0]
@@ -90,6 +90,18 @@ def test_alembic_upgrade_head_on_empty_database() -> None:
         }
         assert role_labels == {"student", "farmer", "admin"}
 
+        job_status_labels = {
+            row[0]
+            for row in conn.execute(
+                text(
+                    "SELECT e.enumlabel FROM pg_enum e "
+                    "JOIN pg_type t ON e.enumtypid = t.oid "
+                    "WHERE t.typname = 'job_status'"
+                )
+            )
+        }
+        assert "pending_selection" in job_status_labels
+
         cols = {
             row[0]
             for row in conn.execute(
@@ -100,3 +112,13 @@ def test_alembic_upgrade_head_on_empty_database() -> None:
             )
         }
         assert "queue_position" not in cols
+        assert "original_filename" in cols
+
+        material_nullable = conn.execute(
+            text(
+                "SELECT is_nullable FROM information_schema.columns "
+                "WHERE table_schema = 'public' AND table_name = 'print_jobs' "
+                "AND column_name = 'material_id'"
+            )
+        ).scalar_one()
+        assert material_nullable == "YES"

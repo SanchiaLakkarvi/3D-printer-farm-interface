@@ -108,6 +108,14 @@ stop with `docker compose down`.
 | `GET`/`POST` | `/api/rbac/admin` | Bearer + Admin | probe; Farmer/Student `403`; POST body `role` ignored |
 | `GET` | `/api/rbac/submit` | Bearer + submit | probe; Student/Farmer/Admin OK (hierarchy) |
 
+## Job upload endpoints
+
+| Method | Path | Auth | Behaviour |
+|---|---|---|---|
+| `POST` | `/api/jobs/upload` | Bearer + submit | Multipart field `file` (`.gcode` / `.gco`); creates Print Job in `pending_selection`; returns job id, status, original filename basename, relative `gcode_path` only |
+
+Storage layout: `{FILE_STORAGE_ROOT}/{user_id}/{job_id}.(gcode|gco)`. Client filename/path is never used for disk location. `material_id` / `printer_id` / estimates stay unset until later slices. Gate rejects use structured codes (`INVALID_EXTENSION`, `FILE_TOO_LARGE`, `EMPTY_FILE`) and never create `pending_selection` jobs or write files. Write/DB failures return `UPLOAD_FAILED` after cleanup; responses never include absolute host paths or raw OS/DB errors. Content validation plugs into `upload_service.run_content_validation_hook` after the local gate (validate-then-commit); file delete-on-collect stays with the lifecycle slice.
+
 ## Material and Printer endpoints
 
 | Method | Path | Auth | Behaviour |
@@ -139,7 +147,8 @@ SQLAlchemy models under `app/models/` mirror the **live** Supabase schema as the
 baseline, then track approved Alembic revisions (currently through
 `0002_queue_indexes_drop_queue_position`, then
 `0003_rename_unit_code_to_department`, then
-`0004_users_auth_profile_supabase_model`).
+`0004_users_auth_profile_supabase_model`, then
+`0005_print_jobs_pending_selection_upload`).
 
 ### Fresh local database
 

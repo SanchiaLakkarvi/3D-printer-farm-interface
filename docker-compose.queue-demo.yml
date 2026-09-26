@@ -1,0 +1,17 @@
+# Optional traffic generator for the disposable local demo stack.
+services:
+  mockserver:
+    environment:
+      MOCK_SIMULATION_SPEED: "1"
+  backend:
+    environment:
+      DEMO_ACCOUNTS: "00000001@student.uwa.edu.au:demo-password-1:admin,farmer.demo@uwa.edu.au:demo-password-1:farmer,90000001@student.uwa.edu.au:demo-password-1:student:Engineering,90000002@student.uwa.edu.au:demo-password-1:student:Architecture,90000003@student.uwa.edu.au:demo-password-1:student:Science"
+  queue-demo:
+    build:
+      context: ./backend
+    entrypoint: ["python", "-u", "-m", "app.scripts.queue_demo"]
+    command: ["--base-url", "http://backend:8000", "--count", "10"]
+    environment:
+      AUTH_ADAPTER: fake
+    depends_on:
+      - backend

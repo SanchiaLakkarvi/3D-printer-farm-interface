@@ -2,9 +2,10 @@
 #
 #   docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
 #
-# Layers on top of docker-compose.yml (same ports: UI 5173, API 8000) and adds the
-# mock printers on 8080. Auth is the in-memory fake adapter, so accounts disappear
-# when the backend restarts. Never point this at a shared database.
+# Layers on top of docker-compose.yml (same ports: UI 5173, API 8000, mock 8080).
+# Swaps Supabase for a throwaway Postgres + fake auth. Accounts disappear when
+# the backend restarts. Never point this at a shared database.
+# Mock printers come from docker-compose.yml (service: mockserver).
 
 services:
   db:
@@ -21,12 +22,6 @@ services:
       timeout: 3s
       retries: 20
 
-  mockserver:
-    build:
-      context: ./mockserver
-    ports:
-      - "8080:8080"
-
   backend:
     depends_on:
       db:
@@ -38,9 +33,6 @@ services:
       AUTH_ADAPTER: fake
       RUN_MIGRATIONS: "1"
       RUN_SEED: "1"
-      # Backend reaches the mock over the Compose network; each printer's own
-      # /prusalink/<id> path is added by the seed script.
-      MOCK_PRINTER_BASE_URL: http://mockserver:8080
       PRINTER_POLL_INTERVAL_S: "2"
       # Fake auth forgets logins on every restart, so these are re-created at startup
       # (matching any profile already in the database). Format: email:password:role,...

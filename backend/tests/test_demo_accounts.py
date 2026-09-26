@@ -69,6 +69,7 @@ def test_restart_keeps_existing_profile_and_its_id(db_session: Session) -> None:
     users = db_session.scalars(select(User)).all()
     assert len(users) == 1  # no duplicate row, so job history stays attached
     assert users[0].role is UserRole.ADMIN and users[0].first_name == "June"  # role updated, name kept
+    assert users[0].department == "Engineering"
 
 
 def test_seeding_twice_is_harmless(db_session: Session, auth_adapter: FakeAuthAdapter) -> None:

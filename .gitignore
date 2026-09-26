@@ -3,6 +3,7 @@ __pycache__/
 .venv/
 storage/*
 !storage/.gitkeep
+backend/storage/uploads/
 venv/
 .env
 .vscode/
@@ -17,3 +18,5 @@ frontend/**/.wrangler/
 frontend/**/.sites-runtime/
 *.db
 Docs/specs/
+Docs/adr/
+raw/
