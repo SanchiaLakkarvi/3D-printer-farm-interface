@@ -45,6 +45,23 @@ class ConfirmEmailResponse(BaseModel):
     message: str
 
 
+class VerifySignupCodeRequest(BaseModel):
+    """Confirm signup with the emailed 6-digit OTP (primary path)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    email: str = Field(min_length=3, max_length=254)
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+class ResendSignupCodeRequest(BaseModel):
+    """Resend the signup confirmation OTP email."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    email: str = Field(min_length=3, max_length=254)
+
+
 class UserProfileResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

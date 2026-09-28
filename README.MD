@@ -45,6 +45,29 @@ Detached:
 docker compose up --build -d
 ```
 
+### Windows users: backend does not start
+
+Windows Git settings can convert `backend/docker-entrypoint.sh` from Unix
+`LF` to `CRLF` line endings. If the backend logs contain either
+`exec ./docker-entrypoint.sh: no such file or directory` or
+`set: Illegal option`, rebuild the backend image so the Dockerfile normalizes
+the script before starting it:
+
+```powershell
+docker compose down
+docker compose build --no-cache backend
+docker compose up -d
+```
+
+Check that the backend is available before opening the UI:
+
+```powershell
+Invoke-WebRequest http://localhost:8000/health
+```
+
+The response should include `"status": "ok"`. Do not change the Supabase
+database settings for this error; it occurs before the API starts.
+
 Compose loads `backend/.env`, builds three images, and starts:
 
 | Service | Container | Port | Build context |
@@ -698,7 +721,7 @@ Collection Notification
 - Initial reporting requirements identified
 - Prusa integration identified as a core technical area
 - Backend foundation: FastAPI, Docker Compose, Supabase Postgres + Auth
-- Email/password Auth with Student Sign-up (email confirmation), Sign-in, `/me`, and RBAC probes
+- Email/password Auth with Student Sign-up (6-digit email OTP confirmation), Sign-in, `/me`, and RBAC probes
 
 ### Not Yet Finalised / not built
 
@@ -840,3 +863,9 @@ Once this workflow is stable, additional functionality can be built around it.
 ## Reference
 
 Requirements and scope in this README are based on the **3D Printer Farm Interface – Client Meeting Notes, 30 July 2026**.
+
+## Automated queue demo
+
+To submit a job every three minutes from rotating department test accounts, see
+[the queue demo guide](Docs/queue-demo.md). It runs against the local mock printer
+and shows the waiting jobs in the Shared queue.

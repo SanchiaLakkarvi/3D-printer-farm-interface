@@ -51,12 +51,13 @@ export function LiveQueue({ role, view }: Props) {
         <div className="farm-scroll">
           <table className="farm-table">
             <thead>
-              <tr><th>File</th><th>Printer</th><th>Status</th><th>Duration</th><th>Est. start</th><th>Est. completion</th></tr>
+              <tr><th>File</th><th>Department</th><th>Printer</th><th>Status</th><th>Duration</th><th>Est. start</th><th>Est. completion</th></tr>
             </thead>
             <tbody>
               {(queue.data ?? []).map((j) => (
                 <tr key={j.job_id}>
                   <td>{j.filename}</td>
+                  <td>{j.department ?? "—"}</td>
                   <td>{j.assigned_printer ? `${j.assigned_printer.model}` : "Awaiting printer"}</td>
                   <td><em className={`s-${j.status}`}>{jobStatusLabel(j.status)}</em></td>
                   <td>{j.est_duration_formatted}{j.duration_is_default ? " (assumed)" : ""}</td>
@@ -64,8 +65,8 @@ export function LiveQueue({ role, view }: Props) {
                   <td>{formatWhen(j.est_completion_time)}</td>
                 </tr>
               ))}
-              {queue.data && queue.data.length === 0 && <tr><td colSpan={6} className="farm-empty">The queue is empty.</td></tr>}
-              {queue.loading && <tr><td colSpan={6} className="farm-empty">Loading…</td></tr>}
+              {queue.data && queue.data.length === 0 && <tr><td colSpan={7} className="farm-empty">The queue is empty.</td></tr>}
+              {queue.loading && <tr><td colSpan={7} className="farm-empty">Loading…</td></tr>}
             </tbody>
           </table>
         </div>

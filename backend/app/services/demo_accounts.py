@@ -6,7 +6,7 @@ up again fails with 409. Seeding the accounts on every start avoids that: each
 one is registered again, reusing the id of any profile already saved, so its role
 and job history are kept.
 
-Format (env ``DEMO_ACCOUNTS``): ``email:password:role`` entries separated by
+Format (env ``DEMO_ACCOUNTS``): ``email:password:role[:department]`` entries separated by
 commas; role is ``student`` (default), ``farmer`` or ``admin``. Passwords must not
 contain ``:`` or ``,``. Only used with AUTH_ADAPTER=fake.
 """
@@ -32,6 +32,7 @@ class DemoAccount:
     email: str
     password: str
     role: UserRole
+    department: str | None = None
 
 
 def parse_demo_accounts(raw: str) -> list[DemoAccount]:
@@ -40,11 +41,11 @@ def parse_demo_accounts(raw: str) -> list[DemoAccount]:
         if not entry:
             continue
         fields = entry.split(":")
-        if len(fields) not in (2, 3) or not fields[0].strip() or not fields[1]:
+        if len(fields) not in (2, 3, 4) or not fields[0].strip() or not fields[1]:
             raise ValueError(
-                f"Bad DEMO_ACCOUNTS entry {entry!r}: expected email:password[:role]"
+                "Bad DEMO_ACCOUNTS entry: expected email:password[:role[:department]]"
             )
-        role_text = fields[2].strip().lower() if len(fields) == 3 else "student"
+        role_text = fields[2].strip().lower() if len(fields) >= 3 else "student"
         try:
             role = UserRole(role_text)
         except ValueError:
@@ -52,7 +53,10 @@ def parse_demo_accounts(raw: str) -> list[DemoAccount]:
             raise ValueError(
                 f"Bad role {role_text!r} in DEMO_ACCOUNTS; use one of: {allowed}"
             ) from None
-        accounts.append(DemoAccount(fields[0].strip().lower(), fields[1], role))
+        department = fields[3].strip() if len(fields) == 4 else None
+        if department == "":
+            raise ValueError("Demo account department must not be empty")
+        accounts.append(DemoAccount(fields[0].strip().lower(), fields[1], role, department))
     return accounts
 
 
@@ -81,12 +85,14 @@ def seed_demo_accounts(
                     last_name=account.role.value.title(),
                     student_number=student_number,
                     role=account.role,
-                    department="Demo",
+                    department=account.department or "Demo",
                     created_at=datetime.now(timezone.utc),
                 )
             )
-        elif existing.role is not account.role:
+        else:
             existing.role = account.role
+            if account.department is not None:
+                existing.department = account.department
         seeded.append(f"{account.email} ({account.role.value})")
     db.commit()
     return seeded

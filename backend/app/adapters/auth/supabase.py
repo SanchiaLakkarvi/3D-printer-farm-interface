@@ -228,6 +228,90 @@ class SupabaseAuthAdapter:
                 "AUTH_PROVIDER_ERROR",
                 "Unable to confirm the email address",
             )
+        # Discard any session tokens; confirmation must not create an app session.
+
+    def confirm_signup_otp(self, *, email: str, token: str) -> None:
+        """Verify signup OTP via POST /verify. Ignore returned session tokens."""
+        try:
+            response = httpx.post(
+                f"{self._base_url}/auth/v1/verify",
+                headers={
+                    "apikey": self._anon_key,
+                    "Authorization": f"Bearer {self._anon_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "type": "signup",
+                    "email": email.strip().lower(),
+                    "token": token.strip(),
+                },
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise BadRequestError(
+                "AUTH_PROVIDER_TIMEOUT",
+                "Email confirmation timed out. Please try again.",
+            ) from exc
+        except httpx.RequestError as exc:
+            raise BadRequestError(
+                "AUTH_PROVIDER_ERROR",
+                "Unable to reach the authentication provider. Please try again.",
+            ) from exc
+        if response.status_code in {400, 401, 403, 404, 422}:
+            raise UnauthorizedError("Invalid or expired verification code")
+        if response.status_code >= 400:
+            raise BadRequestError(
+                "AUTH_PROVIDER_ERROR",
+                "Unable to confirm the email address",
+            )
+        # Discard any session tokens; profile is created on first confirmed Sign-in.
+
+    def resend_signup(
+        self,
+        *,
+        email: str,
+        email_redirect_to: str | None = None,
+    ) -> None:
+        """Resend signup confirmation email / OTP via POST /resend (anon key)."""
+        payload: dict[str, object] = {
+            "type": "signup",
+            "email": email.strip().lower(),
+        }
+        if email_redirect_to:
+            payload["email_redirect_to"] = email_redirect_to
+        try:
+            response = httpx.post(
+                f"{self._base_url}/auth/v1/resend",
+                headers={
+                    "apikey": self._anon_key,
+                    "Authorization": f"Bearer {self._anon_key}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+                timeout=self._signup_timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise BadRequestError(
+                "AUTH_PROVIDER_TIMEOUT",
+                "Resend timed out while contacting the authentication provider. "
+                "Please try again.",
+            ) from exc
+        except httpx.RequestError as exc:
+            raise BadRequestError(
+                "AUTH_PROVIDER_ERROR",
+                "Unable to reach the authentication provider. Please try again.",
+            ) from exc
+        if response.status_code == 429 or "rate_limit" in response.text.lower():
+            raise BadRequestError(
+                "AUTH_EMAIL_RATE_LIMIT",
+                "Too many confirmation emails were sent recently. "
+                "Wait a minute, then try Resend again.",
+            )
+        if response.status_code >= 400:
+            raise BadRequestError(
+                "AUTH_PROVIDER_ERROR",
+                "Unable to resend the verification code",
+            )
 
     def delete_user(self, user_id: UUID) -> None:
         try:

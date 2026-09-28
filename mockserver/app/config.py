@@ -14,4 +14,9 @@ def load_config(path: str | None = None) -> AppConfig:
         raise FileNotFoundError(f"Config file not found: {config_path}")
     with config_path.open("r", encoding="utf-8") as handle:
         raw = yaml.safe_load(handle)
+    # Optional demo override; validate the value through PrinterConfig as usual.
+    speed = os.environ.get("MOCK_SIMULATION_SPEED")
+    if speed is not None:
+        for printer in raw["printers"]:
+            printer["simulation_speed"] = float(speed)
     return AppConfig.model_validate(raw)
