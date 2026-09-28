@@ -109,3 +109,64 @@ def test_confirm_email_token_maps_invalid_to_unauthorized() -> None:
     from app.core.exceptions import UnauthorizedError
 
     assert isinstance(exc_info.value, UnauthorizedError)
+
+
+def test_confirm_signup_otp_posts_verify_with_email_token() -> None:
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = {"access_token": "tok", "user": {"id": str(uuid4())}}
+    with patch("app.adapters.auth.supabase.httpx.post", return_value=response) as post:
+        _adapter().confirm_signup_otp(
+            email="22701234@student.uwa.edu.au",
+            token="123456",
+        )
+    post.assert_called_once()
+    assert post.call_args.args[0].endswith("/auth/v1/verify")
+    assert post.call_args.kwargs["json"] == {
+        "type": "signup",
+        "email": "22701234@student.uwa.edu.au",
+        "token": "123456",
+    }
+
+
+def test_confirm_signup_otp_maps_invalid_to_unauthorized() -> None:
+    from app.core.exceptions import UnauthorizedError
+
+    response = MagicMock()
+    response.status_code = 401
+    response.text = "invalid"
+    with patch("app.adapters.auth.supabase.httpx.post", return_value=response):
+        with pytest.raises(UnauthorizedError) as exc_info:
+            _adapter().confirm_signup_otp(
+                email="22701234@student.uwa.edu.au",
+                token="000000",
+            )
+    assert "verification code" in str(exc_info.value.detail["message"]).lower()
+
+
+def test_resend_signup_posts_resend_body() -> None:
+    response = MagicMock()
+    response.status_code = 200
+    response.text = "{}"
+    with patch("app.adapters.auth.supabase.httpx.post", return_value=response) as post:
+        _adapter().resend_signup(
+            email="22701234@student.uwa.edu.au",
+            email_redirect_to="http://localhost:5173",
+        )
+    post.assert_called_once()
+    assert post.call_args.args[0].endswith("/auth/v1/resend")
+    assert post.call_args.kwargs["json"] == {
+        "type": "signup",
+        "email": "22701234@student.uwa.edu.au",
+        "email_redirect_to": "http://localhost:5173",
+    }
+
+
+def test_resend_signup_maps_rate_limit() -> None:
+    response = MagicMock()
+    response.status_code = 429
+    response.text = '{"error_code":"over_email_send_rate_limit"}'
+    with patch("app.adapters.auth.supabase.httpx.post", return_value=response):
+        with pytest.raises(BadRequestError) as exc_info:
+            _adapter().resend_signup(email="22701234@student.uwa.edu.au")
+    assert exc_info.value.detail["code"] == "AUTH_EMAIL_RATE_LIMIT"

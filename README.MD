@@ -721,7 +721,7 @@ Collection Notification
 - Initial reporting requirements identified
 - Prusa integration identified as a core technical area
 - Backend foundation: FastAPI, Docker Compose, Supabase Postgres + Auth
-- Email/password Auth with Student Sign-up (email confirmation), Sign-in, `/me`, and RBAC probes
+- Email/password Auth with Student Sign-up (6-digit email OTP confirmation), Sign-in, `/me`, and RBAC probes
 
 ### Not Yet Finalised / not built
 

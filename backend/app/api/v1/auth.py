@@ -15,11 +15,13 @@ from app.models.user import User
 from app.schemas.auth import (
     ConfirmEmailRequest,
     ConfirmEmailResponse,
+    ResendSignupCodeRequest,
     SignInRequest,
     SignInResponse,
     SignupPendingResponse,
     StudentSignupRequest,
     UserProfileResponse,
+    VerifySignupCodeRequest,
 )
 from app.services import auth_service
 
@@ -66,11 +68,43 @@ def confirm_email(
     body: ConfirmEmailRequest,
     auth: Annotated[AuthPort, Depends(get_auth_port)],
 ) -> ConfirmEmailResponse:
-    """Confirm Student email after an explicit UI action (not a GET prefetch)."""
+    """Confirm Student email after an explicit UI action (not a GET prefetch).
+
+    Temporary dual-support path for legacy `token_hash` links. Prefer
+    ``POST /api/auth/verify-signup-code``.
+    """
     result = auth_service.confirm_student_email(
         auth=auth,
         token_hash=body.token_hash,
         type=body.type,
+    )
+    return ConfirmEmailResponse(message=result.message)
+
+
+@router.post("/verify-signup-code", response_model=ConfirmEmailResponse)
+def verify_signup_code(
+    body: VerifySignupCodeRequest,
+    auth: Annotated[AuthPort, Depends(get_auth_port)],
+) -> ConfirmEmailResponse:
+    """Confirm Student email with the emailed 6-digit code. No session or profile."""
+    result = auth_service.verify_signup_code(
+        auth=auth,
+        email=str(body.email),
+        code=body.code,
+    )
+    return ConfirmEmailResponse(message=result.message)
+
+
+@router.post("/resend-signup-code", response_model=ConfirmEmailResponse)
+def resend_signup_code(
+    body: ResendSignupCodeRequest,
+    auth: Annotated[AuthPort, Depends(get_auth_port)],
+) -> ConfirmEmailResponse:
+    """Resend the signup verification code email. No session or profile."""
+    result = auth_service.resend_signup_code(
+        auth=auth,
+        email=str(body.email),
+        email_redirect_to=settings.email_confirm_redirect_url,
     )
     return ConfirmEmailResponse(message=result.message)
 
