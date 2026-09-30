@@ -146,6 +146,31 @@ export async function confirmEmail(
   return body as ConfirmEmailResult;
 }
 
+/** Confirm signup with the emailed 6-digit OTP. Does not create a session. */
+export async function verifySignupCode(
+  email: string,
+  code: string,
+): Promise<ConfirmEmailResult> {
+  const { body } = await requestJson("/api/auth/verify-signup-code", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code }),
+  });
+  return body as ConfirmEmailResult;
+}
+
+/** Resend the signup verification code email. */
+export async function resendSignupCode(
+  email: string,
+): Promise<ConfirmEmailResult> {
+  const { body } = await requestJson("/api/auth/resend-signup-code", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  return body as ConfirmEmailResult;
+}
+
 export async function signIn(
   email: string,
   password: string,

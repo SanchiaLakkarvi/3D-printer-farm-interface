@@ -41,18 +41,39 @@ When `AUTH_ADAPTER=supabase`, enable **Confirm email** in the Supabase Dashboard
 (Authentication → Sign In / Providers → Email). Set Site URL to the UI origin
 (e.g. `http://localhost:5173`) and allow that origin under Redirect URLs.
 
+**Email OTP length must be 6.** In the same Email provider panel, set
+**Email OTP Length** to `6` (not 8). The Confirm signup template and the UI both
+expect a six-digit `{{ .Token }}`; an 8-digit project setting causes a mismatch.
+
 Important: edit **Authentication → Email Templates → Confirm signup** so the
-button links to the app with a `token_hash`, **not** `{{ .ConfirmationURL }}`:
+email shows the **6-digit OTP** (`{{ .Token }}`), **not** `{{ .ConfirmationURL }}`
+(mail scanners often auto-open confirm links):
 
 ```html
-<a href="{{ .SiteURL }}/?token_hash={{ .TokenHash }}&type=signup">Confirm email address</a>
+<h2>Confirm your email</h2>
+<p>Your UWA Print Farm verification code is:</p>
+<p style="font-size:24px;letter-spacing:4px;"><strong>{{ .Token }}</strong></p>
+<p>Enter this 6-digit code in the app to finish signup. It expires soon.</p>
 ```
 
-`ConfirmationURL` confirms on a GET to Supabase and is often auto-opened by
-Outlook / Safe Links (~15–20s after delivery). The app link only opens a
-**Confirm email** screen; confirmation happens when the student clicks, via
-`POST /api/auth/confirm-email`. The `users` profile is still created on the
-first successful Sign-in after confirm.
+Optional subject: `Your verification code is {{ .Token }}`. Do **not** include
+`{{ .ConfirmationURL }}`. An optional non-confirming link may use `{{ .SiteURL }}`
+only.
+
+Students enter the code in the UI; FastAPI verifies via
+`POST /api/auth/verify-signup-code` (GoTrue `POST /auth/v1/verify` with
+`type=signup`, `email`, `token`). Resend uses `POST /api/auth/resend-signup-code`.
+Verification does **not** create a session or `users` row — the profile is still
+created on the first successful Sign-in after confirm.
+
+`POST /api/auth/confirm-email` (`token_hash`) remains temporarily for legacy
+links; the primary path is the 6-digit OTP.
+
+**Brevo / SMTP:** Brevo is the SMTP relay only (configured under Supabase →
+Project Settings → Authentication → SMTP). Supabase builds the Confirm signup
+email from the template above; do **not** create a separate Brevo transactional
+template for signup OTP. Turn off Brevo click/open tracking for this sender if
+enabled, and keep the SMTP sender address aligned with an allowed Brevo sender.
 
 ### Demo Admin + Farmers
 
@@ -100,7 +121,9 @@ stop with `docker compose down`.
 | Method | Path | Auth | Behaviour |
 |---|---|---|---|
 | `POST` | `/api/auth/signup` | public | Student Sign-up → pending (`message`, `email`); no profile yet |
-| `POST` | `/api/auth/confirm-email` | public | Exchange `token_hash` after explicit Confirm click |
+| `POST` | `/api/auth/verify-signup-code` | public | Exchange emailed 6-digit OTP (`email` + `code`); no session/profile |
+| `POST` | `/api/auth/resend-signup-code` | public | Resend signup OTP email (`email`) |
+| `POST` | `/api/auth/confirm-email` | public | Legacy: exchange `token_hash` after explicit Confirm click |
 | `POST` | `/api/auth/signin` | public | email + password → `access_token` + safe profile (creates student on first confirmed Sign-in) |
 | `GET` | `/api/auth/me` | Bearer | profile for the token subject |
 | `POST` | `/api/auth/signout` | public | `204`; no server session store |

@@ -769,6 +769,7 @@ Collection Notification
 - Per-printer print queue with estimated start and completion times; print history and farm statistics
 - PrusaLink printer adapter and background sync (send queued jobs, track status, notification rows), tested against the mock printers
 - Frontend: live dashboard, upload flow, and queue / job history
+- Email/password Auth with Student Sign-up (6-digit email OTP confirmation), Sign-in, `/me`, and RBAC probes
 
 ### Not Yet Finalised / not built
 
