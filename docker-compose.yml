@@ -28,6 +28,8 @@ services:
       MOCK_PRINTER_BASE_URL: http://mockserver:8080
       # Poll PrusaLink and dispatch queued jobs (0 disables; demo overlay also sets this).
       PRINTER_POLL_INTERVAL_S: "2"
+      # Seed demo printers + materials on boot (idempotent; skips if table not empty).
+      RUN_SEED: "1"
     volumes:
       - ./backend/storage:/app/storage
     depends_on:
