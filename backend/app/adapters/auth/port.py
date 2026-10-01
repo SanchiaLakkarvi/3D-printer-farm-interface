@@ -45,5 +45,16 @@ class AuthPort(Protocol):
     ) -> None:
         """Confirm email via token_hash (POST). Do not confirm on email-link GET alone."""
 
+    def confirm_signup_otp(self, *, email: str, token: str) -> None:
+        """Confirm signup via emailed 6-digit OTP. Discard any returned session."""
+
+    def resend_signup(
+        self,
+        *,
+        email: str,
+        email_redirect_to: str | None = None,
+    ) -> None:
+        """Resend the signup confirmation email / OTP for an unconfirmed Auth user."""
+
     def delete_user(self, user_id: UUID) -> None:
         """Best-effort cleanup when profile creation fails after register."""

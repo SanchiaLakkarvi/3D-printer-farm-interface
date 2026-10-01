@@ -1,15 +1,17 @@
 "use client";
 import "./upload.css";
 import "./farm.css";
-import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, lazy, Suspense, useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, BarChart3, Bell, CheckCircle2, CircleHelp, CreditCard, FileText, Gauge, GraduationCap, HardHat, LayoutDashboard, LockKeyhole, LogOut, Mail, Menu, Printer, ShieldCheck, Sparkles, Upload, UserCog, Users, Wrench, X, Eye, EyeOff, Building2 } from "lucide-react";
-import { AuthApiError, AUTH_GENERIC_ERROR, getApiBaseUrl, resolveDepartment, restoreSession, signInWithRoleMatch, signOut, signupStudent, type UserProfile } from "@/lib/auth/client";
+import { AuthApiError, AUTH_GENERIC_ERROR, resolveDepartment, resendSignupCode, restoreSession, signInWithRoleMatch, signOut, signupStudent, verifySignupCode, type UserProfile } from "@/lib/auth/client";
 import { clearAccessToken } from "@/lib/auth/session";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { LiveDashboard } from "@/components/farm/live-dashboard";
 import { LiveQueue } from "@/components/farm/live-queue";
 import { LiveUpload } from "@/components/farm/live-upload";
 import { LiveNotifications, NotificationBell } from "@/components/farm/live-notifications";
+// Fetch the report charts only when a farmer or admin opens the reporting page.
+const UsageReports = lazy(() => import("@/components/reports/usage-reports").then(module => ({ default: module.UsageReports })));
 type Role = "student" | "farmer" | "admin"; type Screen = "welcome" | "login" | "signup" | "dashboard";
 function isRole(value: string): value is Role { return value === "student" || value === "farmer" || value === "admin" }
 function initialsFor(profile: UserProfile | null, fallback: string) { if (!profile) return fallback; const a = (profile.first_name[0] ?? "").toUpperCase(), b = (profile.last_name[0] ?? "").toUpperCase(); return (a + b) || fallback }
@@ -43,7 +45,7 @@ const roles = {
   },
 };
 const SIGNUP_PASSWORD_MIN_LENGTH = 8;
-const menus = { student: [["Dashboard", LayoutDashboard], ["Upload file", Upload], ["My jobs", FileText], ["Shared queue", Users], ["Notifications", Bell], ["Usage & costs", BarChart3], ["Help & support", CircleHelp]], farmer: [["Dashboard", LayoutDashboard], ["Farm operations", Gauge], ["Upload file", Upload], ["Notifications", Bell], ["Jobs", FileText], ["Shared queue", Users], ["Maintenance", Wrench]], admin: [["Dashboard", LayoutDashboard], ["Farm operations", Gauge], ["Upload file", Upload], ["Notifications", Bell], ["Jobs", FileText], ["Shared queue", Users], ["Maintenance", Wrench], ["Usage reports", BarChart3], ["Users & access", UserCog]] } as const;
+const menus = { student: [["Dashboard", LayoutDashboard], ["Upload file", Upload], ["My jobs", FileText], ["Shared queue", Users], ["Notifications", Bell], ["Usage & costs", BarChart3], ["Help & support", CircleHelp]], farmer: [["Dashboard", LayoutDashboard], ["Farm operations", Gauge], ["Upload file", Upload], ["Notifications", Bell], ["Jobs", FileText], ["Shared queue", Users], ["Maintenance", Wrench], ["Usage reports", BarChart3]], admin: [["Dashboard", LayoutDashboard], ["Farm operations", Gauge], ["Upload file", Upload], ["Notifications", Bell], ["Jobs", FileText], ["Shared queue", Users], ["Maintenance", Wrench], ["Usage reports", BarChart3], ["Users & access", UserCog]] } as const;
 const descriptions: Record<string, string> = { "Upload file": "Upload a pre-sliced G-code file and review its print job summary.", "My jobs": "Review active, completed and cancelled jobs, with print progress, printer details and collection status.", "Jobs": "Review submissions, validation results, queue state, print progress and collection status across the farm.", "Shared queue": "View compatible jobs in submission order and see estimated waiting times without exposing private student files.", "Notifications": "Print-start, completion and collection messages will appear here and can also be delivered by email.", "Usage & costs": "See how print time is converted into an estimated cost before payment.", "Help & support": "Find G-code preparation guidance, collection instructions and contact details for the Print Farm team.", "Farm operations": "Move jobs through printing, removal, packing and ready-for-collection stages from one operational view.", "Maintenance": "Record maintenance, printer downtime and service notes so the team knows which machines are available.", "Usage reports": "Compare print hours, jobs, filament and indicative costs by department, printer and date range.", "Users & access": "Manage authorised students, printer farmers and administrators with role-based access." };
 function Brand() { return <div className="brand"><span className="logo"><Printer /></span><span><b>UWA 3D Print Farm</b></span></div> }
 export default function Home() {
@@ -76,7 +78,87 @@ export default function Home() {
   if (screen === "signup") { if (role !== "student") return <Login role={role} email={email} password={password} show={show} error={error} notice={notice} pending={pending} setEmail={setEmail} setPassword={setPassword} setShow={setShow} submit={login} back={() => setScreen("welcome")} />; return <Signup back={() => { setEmail(""); setPassword(""); setError(""); setNotice(""); setScreen("login") }} goSignIn={(address, message) => { setRole("student"); setEmail(address); setPassword(""); setError(""); setNotice(message); setScreen("login") }} />; }
   if (!profile) return <Welcome choose={choose} />;
   const shellRole = isRole(profile.role) ? profile.role : role; const shellMeta = roles[shellRole]; const shellEmail = profile.email; const shellName = `${profile.first_name} ${profile.last_name}`.trim(); const shellInitials = initialsFor(profile, shellMeta.initials);
-  return <div className="shell"><header><button className="hamb" onClick={() => setNav(true)}><Menu /></button><Brand /><div className="top-user"><NotificationBell open={() => setActive("Notifications")} /><span><b>{shellName}</b><small>{shellEmail}</small></span><i className={"avatar " + shellRole}>{shellInitials}</i></div></header><aside className={nav ? "open" : ""}><button className="close" onClick={() => setNav(false)}><X /></button><nav>{menus[shellRole].map(([label, Icon]) => <button key={label} className={active === label ? "active" : ""} onClick={() => { setActive(label); setNav(false) }}><Icon />{label}</button>)}</nav><div className="account"><div><i>{shellInitials}</i><span><b>{shellMeta.title} account</b><small>{shellEmail}</small></span></div><button onClick={logout}><LogOut />Log out</button></div></aside>{nav && <button className="shade" onClick={() => setNav(false)} />}<main className="work">{active === "Dashboard" ? <LiveDashboard role={shellRole} profile={profile} upload={() => setActive("Upload file")} openJobs={() => setActive(shellRole === "student" ? "My jobs" : "Jobs")} /> : <Feature role={shellRole} active={active} openJobs={() => setActive(shellRole === "student" ? "My jobs" : "Jobs")} />}</main></div>
+  return (
+    <div className="shell">
+      <header>
+        <button className="hamb" onClick={() => setNav(true)}>
+          <Menu />
+        </button>
+        <Brand />
+        <div className="top-user">
+          <NotificationBell open={() => setActive("Notifications")} />
+          <span>
+            <b>{shellName}</b>
+            <small>{shellEmail}</small>
+          </span>
+          <i className={"avatar " + shellRole}>{shellInitials}</i>
+        </div>
+      </header>
+
+      <aside className={nav ? "open" : ""}>
+        <button className="close" onClick={() => setNav(false)}>
+          <X />
+        </button>
+        <nav>
+          {menus[shellRole].map(([label, Icon]) => (
+            <button
+              key={label}
+              className={active === label ? "active" : ""}
+              onClick={() => {
+                setActive(label);
+                setNav(false);
+              }}
+            >
+              <Icon />
+              {label}
+            </button>
+          ))}
+        </nav>
+        <div className="account">
+          <div>
+            <i>{shellInitials}</i>
+            <span>
+              <b>{shellMeta.title} account</b>
+              <small>{shellEmail}</small>
+            </span>
+          </div>
+          <button onClick={logout}>
+            <LogOut />
+            Log out
+          </button>
+        </div>
+      </aside>
+
+      {nav && (
+        <button className="shade" onClick={() => setNav(false)} />
+      )}
+
+      <main className="work">
+        {active === "Dashboard" ? (
+          <LiveDashboard
+            role={shellRole}
+            profile={profile}
+            upload={() => setActive("Upload file")}
+            openJobs={() =>
+              setActive(shellRole === "student" ? "My jobs" : "Jobs")
+            }
+          />
+        ) : active === "Usage reports" ? (
+          <Suspense fallback={<p role="status">Loading analytics…</p>}>
+            <UsageReports role={shellRole} />
+          </Suspense>
+        ) : (
+          <Feature
+            role={shellRole}
+            active={active}
+            openJobs={() =>
+              setActive(shellRole === "student" ? "My jobs" : "Jobs")
+            }
+          />
+        )}
+      </main>
+    </div>
+  );
 }
 function Welcome({ choose }: { choose: (r: Role) => void }) { return <main className="auth welcome"><div className="wrap"><Brand /><section className="hero"><span><Sparkles /> UWA printing made simple</span><h1>Get started with the<br /><em>3D Print Farm</em></h1><p>Upload your files, follow your print job and know when it is ready to collect.</p></section><section className="access"><div><span>ACCESS THE PORTAL</span><h2>Continue as</h2><p>Select the option for your UWA account.</p></div><div className="cards">{(["student", "farmer", "admin"] as Role[]).map(k => { const v = roles[k], Icon = v.icon; return <button key={k} className={k} onClick={() => choose(k)}><i><Icon /></i><span><h3>{v.title}</h3><p>{v.sub}</p><small>{v.domain}</small></span><ArrowRight /></button> })}</div></section><footer><span>University of Western Australia</span><span>Need help? Contact the Print Farm team</span></footer></div></main> }
 function VerifyStory() {
@@ -99,31 +181,6 @@ function VerifyStory() {
 }
 type LP = { role: Role; email: string; password: string; show: boolean; error: string; notice?: string; pending: boolean; setEmail: (x: string) => void; setPassword: (x: string) => void; setShow: (x: boolean) => void; submit: (e: FormEvent) => void; back: () => void; signup?: () => void };
 function Login(p: LP) { const r = roles[p.role], Icon = r.icon; const emailHint = p.role === "student" ? `Use your ${r.domain} email` : "Use the email on your Print Farm account"; return <main className="auth split"><section className="story"><Brand /><div><span>UWA 3D PRINT FARM</span><h1>Turn your design<br />into something real.</h1><p>A simple way to submit, track and collect your UWA 3D prints.</p><div className="steps"><b>01<small>Upload G-code</small></b><b>02<small>Join the queue</small></b><b>03<small>Collect your print</small></b></div></div></section><section className="formside"><div className="formcard"><button className="back" onClick={p.back}><ArrowLeft />Back</button><i className={"roleicon " + p.role}><Icon /></i><span className="kicker">{r.title} access</span><h2>Welcome back</h2><p>Sign in with your UWA account to continue.</p><form onSubmit={p.submit}><label>Email address<div className="input"><Mail /><input type="email" value={p.email} onChange={e => p.setEmail(e.target.value)} placeholder={r.domain} required /></div><small>{emailHint}</small></label><label>Password<div className="input"><LockKeyhole /><input type={p.show ? "text" : "password"} value={p.password} onChange={e => p.setPassword(e.target.value)} placeholder="Enter your password" required /><button type="button" onClick={() => p.setShow(!p.show)}>{p.show ? <EyeOff /> : <Eye />}</button></div></label>{p.notice && <div className="notice">{p.notice}</div>}{p.error && <div className="error">{p.error}</div>}<button className="primary" disabled={p.pending}>{p.pending ? "Signing in…" : <>Sign in <ArrowRight /></>}</button></form>{p.role === "student" && p.signup ? <div className="join">New to the Print Farm? <button type="button" onClick={p.signup}>Create a student account</button></div> : <div className="staff"><ShieldCheck />{r.title} accounts are issued by an authorised administrator.</div>}</div></section></main> }
-
-async function signupCodeRequest(path: string, payload: object): Promise<{ message: string }> {
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const body: unknown = await response.json().catch(() => null);
-  if (!response.ok) {
-    const detail = body && typeof body === "object" && "detail" in body ? body.detail : null;
-    const message = typeof detail === "string" ? detail :
-      detail && typeof detail === "object" && "message" in detail && typeof detail.message === "string"
-        ? detail.message : AUTH_GENERIC_ERROR;
-    throw new AuthApiError(message, response.status);
-  }
-  const message = body && typeof body === "object" && "message" in body && typeof body.message === "string"
-    ? body.message : "";
-  return { message };
-}
-function verifySignupCode(email: string, code: string) {
-  return signupCodeRequest("/api/auth/verify-signup-code", { email, code });
-}
-function resendSignupCode(email: string) {
-  return signupCodeRequest("/api/auth/resend-signup-code", { email });
-}
 
 function Signup({ back, goSignIn }: { back: () => void; goSignIn: (email: string, message: string) => void }) {
   const [f, setF] = useState({ first: "", last: "", email: "", dept: "", other: "", pass: "" });
@@ -214,10 +271,13 @@ function Signup({ back, goSignIn }: { back: () => void; goSignIn: (email: string
             </button>
           </form>
           <div className="verify-links">
-            <button type="button" disabled={pending || resendWait > 0} onClick={resend}>
+            <button type="button" className="verify-link" disabled={pending || resendWait > 0} onClick={resend}>
               {resendWait > 0 ? `Resend code in ${resendWait}s` : "Resend code"}
             </button>
-            <button type="button" onClick={() => { setPendingEmail(null); setCode(""); setErr(""); setVerifyNotice(""); }}>Change email</button>
+            <span className="verify-links-sep" aria-hidden="true">·</span>
+            <button type="button" className="verify-link" onClick={() => { setPendingEmail(null); setCode(""); setErr(""); setVerifyNotice(""); setResendWait(0); setPending(false); }}>
+              Change email
+            </button>
           </div>
         </div>
       </section>
