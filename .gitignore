@@ -7,7 +7,6 @@ backend/storage/uploads/
 venv/
 .env
 .vscode/
-.env
 AGENTS.md
 skills-lock.json
 Explanation/
@@ -20,3 +19,4 @@ frontend/**/.sites-runtime/
 Docs/specs/
 Docs/adr/
 raw/
+individual/
