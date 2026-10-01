@@ -152,11 +152,42 @@ Storage layout: `{FILE_STORAGE_ROOT}/{user_id}/{job_id}.(gcode|gco)`. Client fil
 
 ### Seed Printers & Materials (demo hardware)
 
-To populate local/staging databases with demo UWA printers (Prusa CORE One, Prusa XL) and materials (PLA, PETG):
+**When using Docker Compose (`docker compose up --build`), seeding happens automatically.**
+`RUN_SEED=1` is set in `docker-compose.yml`, which causes `docker-entrypoint.sh` to run
+`seed_printers` before the API starts. The script is idempotent — it skips if the
+materials table is already populated, so restarting the stack is safe.
+
+To run it manually (e.g. outside Compose or against a fresh venv):
 
 ```bash
 cd backend && source .venv/bin/activate
 python -m app.scripts.seed_printers
+```
+
+### Queue demo (submit test jobs through the API)
+
+`app/scripts/queue_demo.py` signs in as three demo student accounts and submits
+pre-sliced G-code jobs to the queue. It requires:
+
+1. The stack running (`docker compose up --build`) — seeding happens automatically.
+2. The three demo Supabase Auth users to exist with `first_name`, `last_name`, and
+   `department` in their metadata. A team admin creates these once in Supabase Auth
+   (Admin API or Dashboard → Authentication → Users; auto-confirm, password `demo-password-1`):
+
+   | Email | Department |
+   |---|---|
+   | `90000001@student.uwa.edu.au` | Engineering |
+   | `90000002@student.uwa.edu.au` | Architecture |
+   | `90000003@student.uwa.edu.au` | Science |
+
+Once the stack is up and users exist, run from the repo root:
+
+```bash
+# Quick smoke test — 3 jobs, 5 seconds apart
+docker compose exec backend python -m app.scripts.queue_demo --count 3 --interval 5
+
+# Full demo — 10 jobs, 3 minutes apart (default)
+docker compose exec backend python -m app.scripts.queue_demo
 ```
 
 **Sign-out:** access tokens are provider JWTs (or fake tokens in tests). The API does not keep a server-side session list, so Sign-out is **client-side**: discard the stored `access_token`. Call `POST /signout` for a uniform API boundary; revoke/refresh-token logout can be added later if needed. Missing, invalid, or expired Bearer tokens on protected routes return `401`.
