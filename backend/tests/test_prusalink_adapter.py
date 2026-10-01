@@ -72,6 +72,18 @@ def test_stop_job_calls_delete() -> None:
     assert seen == {"method": "DELETE", "path": "/api/v1/job/7"}
 
 
+@pytest.mark.parametrize("action", ["pause", "resume"])
+def test_pause_and_resume_call_put(action: str) -> None:
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.update(method=request.method, path=request.url.path)
+        return httpx.Response(204)
+
+    getattr(_adapter(handler), f"{action}_job")(7)
+    assert seen == {"method": "PUT", "path": f"/api/v1/job/7/{action}"}
+
+
 @pytest.mark.parametrize(
     ("status", "exc"),
     [(401, PrinterAuthError), (409, PrinterConflictError), (500, PrinterError)],

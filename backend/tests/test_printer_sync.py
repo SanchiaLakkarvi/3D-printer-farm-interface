@@ -50,6 +50,10 @@ class FakePort:
 
     def stop_job(self, job_id: int) -> None: ...
 
+    def pause_job(self, job_id: int) -> None: ...
+
+    def resume_job(self, job_id: int) -> None: ...
+
     def close(self) -> None:
         self.closed = True
 
@@ -93,6 +97,10 @@ def _utc(dt: datetime | None) -> datetime | None:
 
 def _notifications(db: Session) -> list[NotificationType]:
     return [n.type for n in db.scalars(select(Notification).order_by(Notification.sent_at))]
+
+
+def _messages(db: Session) -> list[str]:
+    return [n.message for n in db.scalars(select(Notification).order_by(Notification.sent_at))]
 
 
 def test_dispatches_oldest_queued_job_to_free_printer(world) -> None:
@@ -185,6 +193,72 @@ def test_idle_printer_that_lost_the_job_fails_it(world) -> None:
     job = make_job(JobStatus.PRINTING, started_at=NOW - timedelta(minutes=5))
     sync_printer(db, printer, FakePort(PrinterState.IDLE), NOW)
     assert job.status is JobStatus.FAILED
+
+
+def test_messages_name_the_file_and_printer(world) -> None:
+    db, printer, make_job = world
+    job = make_job()
+    sync_printer(db, printer, FakePort(), NOW)
+    sync_printer(db, printer, FakePort(PrinterState.FINISHED), NOW + timedelta(minutes=5))
+
+    assert _messages(db) == [
+        "part.gcode on Prusa CORE One (Lab) has started printing.",
+        "part.gcode on Prusa CORE One (Lab) has finished printing.",
+    ]
+    assert job.status is JobStatus.COMPLETED
+
+
+def test_original_filename_is_preferred_in_messages(world) -> None:
+    db, printer, make_job = world
+    make_job(original_filename="rook.gcode")
+    sync_printer(db, printer, FakePort(), NOW)
+    assert _messages(db) == ["rook.gcode on Prusa CORE One (Lab) has started printing."]
+
+
+@pytest.mark.parametrize(
+    ("state", "reason"),
+    [
+        (PrinterState.ERROR, "the printer reported an error"),
+        (PrinterState.ATTENTION, "the printer needs attention"),
+        (PrinterState.STOPPED, "the print was stopped at the printer"),
+        (PrinterState.IDLE, "the printer is no longer running it"),
+    ],
+)
+def test_failure_messages_explain_why(world, state: PrinterState, reason: str) -> None:
+    db, printer, make_job = world
+    make_job(JobStatus.PRINTING, started_at=NOW - timedelta(minutes=5))
+    sync_printer(db, printer, FakePort(state), NOW)
+    assert _messages(db)[0] == f"part.gcode on Prusa CORE One (Lab) failed: {reason}."
+
+
+def test_pause_and_resume_notify_the_owner_once_each(world) -> None:
+    db, printer, make_job = world
+    job = make_job(JobStatus.PRINTING, started_at=NOW - timedelta(minutes=5))
+
+    sync_printer(db, printer, FakePort(PrinterState.PAUSED), NOW)
+    sync_printer(db, printer, FakePort(PrinterState.PAUSED), NOW + timedelta(seconds=2))
+    assert _utc(job.paused_at) == NOW and job.status is JobStatus.PRINTING
+    assert printer.status is PrinterStatus.PRINTING
+
+    sync_printer(db, printer, FakePort(PrinterState.PRINTING), NOW + timedelta(seconds=4))
+    sync_printer(db, printer, FakePort(PrinterState.PRINTING), NOW + timedelta(seconds=6))
+    assert job.paused_at is None
+
+    assert _notifications(db) == [NotificationType.JOB_PAUSED, NotificationType.JOB_RESUMED]
+    assert _messages(db) == [
+        "part.gcode on Prusa CORE One (Lab) has been paused.",
+        "part.gcode on Prusa CORE One (Lab) has resumed printing.",
+    ]
+
+
+def test_job_that_ends_while_paused_clears_paused_at(world) -> None:
+    db, printer, make_job = world
+    job = make_job(JobStatus.PRINTING, started_at=NOW - timedelta(minutes=5))
+    sync_printer(db, printer, FakePort(PrinterState.PAUSED), NOW)
+    sync_printer(db, printer, FakePort(PrinterState.STOPPED), NOW + timedelta(seconds=2))
+
+    assert job.status is JobStatus.FAILED and job.paused_at is None
+    assert _notifications(db) == [NotificationType.JOB_PAUSED, NotificationType.JOB_ERROR]
 
 
 def test_unreachable_printer_goes_offline_and_jobs_are_untouched(world) -> None:

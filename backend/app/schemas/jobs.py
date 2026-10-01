@@ -33,6 +33,14 @@ class QueueTileResponse(BaseModel):
     est_completion_time: datetime | None = None
     duration_is_default: bool = False
     submitted_at: datetime
+    paused: bool = False
+
+
+class JobControlResponse(BaseModel):
+    """A pause/resume command was accepted by the printer; the queue shows the new state on the next poll."""
+
+    job_id: uuid.UUID
+    action: str
 
 
 class PrintHistoryResponse(BaseModel):

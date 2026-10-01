@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.v1 import auth, jobs, materials, printers, rbac, reports
+from app.api.v1 import auth, jobs, materials, notifications, printers, rbac, reports
 
 from app.core.config import settings
 
@@ -13,3 +13,4 @@ api_router.include_router(materials.router)
 api_router.include_router(printers.router)
 api_router.include_router(jobs.router)
 api_router.include_router(reports.router)
+api_router.include_router(notifications.router)

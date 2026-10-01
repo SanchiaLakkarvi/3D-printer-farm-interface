@@ -8,7 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_submitter
+from app.api.deps import get_current_user, require_farmer, require_submitter
 from app.db.session import get_db
 from app.models.user import User
 from app.core.config import settings
@@ -16,11 +16,12 @@ from app.core.exceptions import PayloadTooLargeError
 from app.schemas.job import JobUploadOut
 from app.schemas.jobs import (
     GcodeValidationResponse,
+    JobControlResponse,
     JobSubmissionResponse,
     PrintHistoryResponse,
     QueueTileResponse,
 )
-from app.services import job_service, submission_service, upload_service
+from app.services import job_control_service, job_service, submission_service, upload_service
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -101,3 +102,25 @@ def submit_job(
         printer_id=printer_id,
         material_id=material_id,
     )
+
+
+@router.post("/{job_id}/pause", response_model=JobControlResponse, status_code=202)
+def pause_job(
+    job_id: uuid.UUID,
+    _farmer: Annotated[User, Depends(require_farmer)],
+    db: Annotated[Session, Depends(get_db)],
+) -> JobControlResponse:
+    """Pause a printing job on its printer. Farmer/Admin only. The owner is notified by the sync loop."""
+    job = job_control_service.pause_job(db, job_id)
+    return JobControlResponse(job_id=job.id, action="pause")
+
+
+@router.post("/{job_id}/resume", response_model=JobControlResponse, status_code=202)
+def resume_job(
+    job_id: uuid.UUID,
+    _farmer: Annotated[User, Depends(require_farmer)],
+    db: Annotated[Session, Depends(get_db)],
+) -> JobControlResponse:
+    """Resume a paused job on its printer. Farmer/Admin only. The owner is notified by the sync loop."""
+    job = job_control_service.resume_job(db, job_id)
+    return JobControlResponse(job_id=job.id, action="resume")

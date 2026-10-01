@@ -80,6 +80,11 @@ class PrintJob(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    # Set while the printer reports the job PAUSED, so each pause is notified once.
+    paused_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,

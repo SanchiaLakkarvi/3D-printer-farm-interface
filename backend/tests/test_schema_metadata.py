@@ -148,6 +148,8 @@ def test_enum_names_and_values() -> None:
         "job_completed",
         "job_error",
         "ready_for_collection",
+        "job_paused",
+        "job_resumed",
     }
 
     assert _table("users").c.role.type.name == "user_role"
