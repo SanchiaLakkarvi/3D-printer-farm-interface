@@ -166,6 +166,7 @@ export const api = {
   markAllRead: () => request<{ count: number }>("/notifications/read-all", { method: "POST" }),
   pauseJob: (jobId: string) => request<{ job_id: string; action: string }>(`/jobs/${jobId}/pause`, { method: "POST" }),
   resumeJob: (jobId: string) => request<{ job_id: string; action: string }>(`/jobs/${jobId}/resume`, { method: "POST" }),
+  collectJob: (jobId: string) => request<{ job_id: string; action: string }>(`/jobs/${jobId}/collect`, { method: "POST" }),
   submit: (file: File, printerId: string, materialId: string) =>
     request<JobSubmission>("/jobs", {
       method: "POST",

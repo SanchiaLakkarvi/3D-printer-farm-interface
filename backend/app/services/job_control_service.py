@@ -1,16 +1,19 @@
-"""Farmer controls for a job that is on a printer: pause and resume.
+"""Farmer controls for pausing, resuming, and collecting prints.
 
-This only sends the command to the printer. The printer sync loop sees the new
-state on its next poll, records ``paused_at`` and notifies the job owner, so
-pauses made at the printer itself are handled the same way.
+Pause and resume send commands to the printer; the sync loop records their
+state changes. Collection confirms physical removal, records the farmer action,
+and notifies the job owner.
 """
 
 from __future__ import annotations
 
+import os
 import uuid
 from collections.abc import Callable
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.adapters.printer.factory import build_printer_port
@@ -21,9 +24,12 @@ from app.adapters.printer.port import (
     PrinterUnreachableError,
 )
 from app.core.exceptions import ConflictError, NotFoundError
-from app.models.enums import JobStatus
+from app.models.collection_record import CollectionRecord
+from app.models.enums import JobStatus, NotificationType
+from app.models.notification import Notification
 from app.models.printer import Printer
 from app.models.print_job import PrintJob
+from app.models.user import User
 
 
 def _send(
@@ -73,3 +79,54 @@ def resume_job(
     port_factory: Callable[[Printer], PrinterPort | None] | None = None,
 ) -> PrintJob:
     return _send(db, job_id, "resume", port_factory)
+
+
+def mark_ready_for_collection(
+    db: Session,
+    job_id: uuid.UUID,
+    farmer: User,
+    now: datetime | None = None,
+) -> PrintJob:
+    """Record physical removal and notify the owner that the print can be collected."""
+    job = db.scalars(
+        select(PrintJob).where(PrintJob.id == job_id).with_for_update()
+    ).first()
+    if job is None:
+        raise NotFoundError("Print job", str(job_id))
+    if job.status is JobStatus.READY_FOR_COLLECTION:
+        return job
+    if job.status is not JobStatus.COMPLETED:
+        raise ConflictError("Only a completed print can be marked ready for collection.")
+
+    ready_at = now or datetime.now(timezone.utc)
+    job.status = JobStatus.READY_FOR_COLLECTION
+    db.add(
+        CollectionRecord(
+            id=uuid.uuid4(),
+            job_id=job.id,
+            farmer_id=farmer.id,
+            removed_at=ready_at,
+            ready_at=ready_at,
+        )
+    )
+    name = job.original_filename or os.path.basename(job.gcode_path) or "Your print"
+    db.add(
+        Notification(
+            id=uuid.uuid4(),
+            user_id=job.user_id,
+            job_id=job.id,
+            type=NotificationType.READY_FOR_COLLECTION,
+            message=f"Your print {name} is ready to collect.",
+            is_read=False,
+            sent_at=ready_at,
+        )
+    )
+    db.commit()
+
+    # The successful file is no longer needed after the physical print is removed.
+    try:
+        os.remove(job.gcode_path)
+        os.rmdir(os.path.dirname(job.gcode_path))
+    except OSError:
+        pass
+    return job

@@ -27,10 +27,11 @@ from app.adapters.printer.port import (
     PrinterUnreachableError,
 )
 from app.db.session import SessionLocal
-from app.models.enums import JobStatus, NotificationType, PrinterStatus
+from app.models.enums import JobStatus, NotificationType, PrinterStatus, UserRole
 from app.models.notification import Notification
 from app.models.print_job import PrintJob
 from app.models.printer import Printer
+from app.models.user import User
 
 log = logging.getLogger(__name__)
 
@@ -65,13 +66,20 @@ def _notify(db: Session, job: PrintJob, kind: NotificationType, message: str, no
     )
 
 
-def _discard_file(job: PrintJob) -> None:
-    """Print files are not kept after a successful print (client requirement)."""
-    try:
-        os.remove(job.gcode_path)
-        os.rmdir(os.path.dirname(job.gcode_path))
-    except OSError:
-        pass
+def _notify_farmers(db: Session, job: PrintJob, message: str, now: datetime) -> None:
+    """Notify every farmer that a completed print needs physical removal."""
+    for farmer_id in db.scalars(select(User.id).where(User.role == UserRole.FARMER)):
+        db.add(
+            Notification(
+                id=uuid.uuid4(),
+                user_id=farmer_id,
+                job_id=job.id,
+                type=NotificationType.JOB_COMPLETED,
+                message=message,
+                is_read=False,
+                sent_at=now,
+            )
+        )
 
 
 def _aware(dt: datetime) -> datetime:
@@ -93,7 +101,12 @@ def _finish(db: Session, job: PrintJob, ok: bool, reason: str, now: datetime) ->
     if ok:
         job.actual_filament_g = job.est_filament_g
         _notify(db, job, NotificationType.JOB_COMPLETED, f"{_describe(job)} has finished printing.", now)
-        _discard_file(job)
+        _notify_farmers(
+            db,
+            job,
+            f"{_describe(job)} has finished printing and needs to be removed.",
+            now,
+        )
     else:
         _notify(db, job, NotificationType.JOB_ERROR, f"{_describe(job)} failed: {reason}.", now)
 
@@ -131,6 +144,15 @@ def _apply_active_job(db: Session, job: PrintJob, snap: PrinterSnapshot, now: da
 
 
 def _dispatch_next(db: Session, printer: Printer, port: PrinterPort, now: datetime) -> None:
+    unremoved_print = db.scalars(
+        select(PrintJob.id).where(
+            PrintJob.printer_id == printer.id,
+            PrintJob.status == JobStatus.COMPLETED,
+        )
+    ).first()
+    if unremoved_print is not None:
+        return
+
     job = db.scalars(
         select(PrintJob)
         .where(

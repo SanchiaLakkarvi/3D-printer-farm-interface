@@ -124,3 +124,14 @@ def resume_job(
     """Resume a paused job on its printer. Farmer/Admin only. The owner is notified by the sync loop."""
     job = job_control_service.resume_job(db, job_id)
     return JobControlResponse(job_id=job.id, action="resume")
+
+
+@router.post("/{job_id}/collect", response_model=JobControlResponse)
+def mark_ready_for_collection(
+    job_id: uuid.UUID,
+    farmer: Annotated[User, Depends(require_farmer)],
+    db: Annotated[Session, Depends(get_db)],
+) -> JobControlResponse:
+    """Confirm removal from the printer and tell the owner it is ready to collect."""
+    job = job_control_service.mark_ready_for_collection(db, job_id, farmer)
+    return JobControlResponse(job_id=job.id, action="collect")
