@@ -63,6 +63,27 @@ class BadRequestError(AppError):
         )
 
 
+class TooManyRequestsError(AppError):
+    def __init__(self, message: str = "Too many requests. Please try again shortly.") -> None:
+        super().__init__(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            code="RATE_LIMITED",
+            message=message,
+        )
+
+
+class ServiceUnavailableError(AppError):
+    def __init__(
+        self,
+        message: str = "Help chat is temporarily unavailable. Please try again later.",
+    ) -> None:
+        super().__init__(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            code="HELP_UNAVAILABLE",
+            message=message,
+        )
+
+
 class PayloadTooLargeError(AppError):
     def __init__(self, message: str) -> None:
         super().__init__(

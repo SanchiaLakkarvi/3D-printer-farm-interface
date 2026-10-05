@@ -41,6 +41,17 @@ class Settings(BaseSettings):
     printer_poll_interval_s: float = 0.0
     mock_printer_base_url: str = "http://localhost:8080"
 
+    # Public student troubleshooting chat. The Anthropic key stays server-only.
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-haiku-4-5-20251001"
+    help_docs_root: str = "../Docs/help"
+    help_max_message_chars: int = 1000
+    help_max_history_messages: int = 6
+    help_max_output_tokens: int = 400
+    help_rate_limit_requests: int = 10
+    help_rate_limit_window_seconds: int = 60
+    help_provider_timeout_s: float = 10.0
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
