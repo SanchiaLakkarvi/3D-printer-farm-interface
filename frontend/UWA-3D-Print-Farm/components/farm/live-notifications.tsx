@@ -11,6 +11,7 @@ const POLL_MS = 5000;
 const CHANGED = "farm:notifications-changed";
 
 const ICONS: Record<NotificationType, typeof Bell> = {
+  job_submitted: Printer,
   job_started: Printer,
   job_completed: CheckCircle2,
   job_error: AlertTriangle,
@@ -20,6 +21,7 @@ const ICONS: Record<NotificationType, typeof Bell> = {
 };
 
 const TITLES: Record<NotificationType, string> = {
+  job_submitted: "New job queued",
   job_started: "Print started",
   job_completed: "Print finished",
   job_error: "Print failed",
@@ -83,7 +85,9 @@ export function LiveNotifications({ role }: Props) {
         <div>
           <span>{role === "student" ? "Student" : role === "farmer" ? "Printer Farmer" : "Administrator"} portal</span>
           <h1>Notifications</h1>
-          <p>Updates on your print jobs: when they start, pause, resume, finish or fail. New messages appear here automatically.</p>
+          <p>{role === "student"
+            ? "Updates on your print jobs: when they start, pause, resume, finish or fail."
+            : "Updates on newly queued jobs and prints that need attention or collection."} New messages appear here automatically.</p>
         </div>
         {unread > 0 && <button onClick={() => void run(api.markAllRead)} disabled={busy}><CheckCircle2 />Mark all as read</button>}
       </div>
@@ -92,7 +96,13 @@ export function LiveNotifications({ role }: Props) {
       <section className="panel">
         <h2>{unread > 0 ? `${unread} unread` : "All caught up"}</h2>
         {list.loading && <div className="farm-empty">Loading…</div>}
-        {list.data && items.length === 0 && <div className="farm-empty">No notifications yet. Submit a print job and updates will show up here.</div>}
+        {list.data && items.length === 0 && (
+          <div className="farm-empty">
+            {role === "student"
+              ? "No notifications yet. Submit a print job and updates will show up here."
+              : "No farm notifications yet. New queued jobs and collection updates will show up here."}
+          </div>
+        )}
         <ul className="farm-notes">
           {items.map((n) => {
             const Icon = ICONS[n.type] ?? Bell;

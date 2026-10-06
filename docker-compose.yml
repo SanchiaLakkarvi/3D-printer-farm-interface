@@ -18,6 +18,10 @@ services:
     env_file:
       - ./backend/.env
     environment:
+      # Normal Compose accepts only real Supabase sessions. The explicit demo
+      # overlay may override this with fake auth against its throwaway database.
+      AUTH_ADAPTER: supabase
+      DEMO_ACCOUNTS: ""
       # Container-local upload path (overrides host-relative ./storage from .env)
       FILE_STORAGE_ROOT: ./storage
       # Never auto-migrate a shared Supabase DB on boot. Set to 1 only for a

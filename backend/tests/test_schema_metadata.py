@@ -144,6 +144,7 @@ def test_enum_names_and_values() -> None:
         "config",
     }
     assert {m.value for m in NotificationType} == {
+        "job_submitted",
         "job_started",
         "job_completed",
         "job_error",

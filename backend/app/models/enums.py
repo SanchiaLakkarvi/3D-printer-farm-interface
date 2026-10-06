@@ -40,6 +40,7 @@ class CheckType(str, enum.Enum):
 
 
 class NotificationType(str, enum.Enum):
+    JOB_SUBMITTED = "job_submitted"
     JOB_STARTED = "job_started"
     JOB_COMPLETED = "job_completed"
     JOB_ERROR = "job_error"

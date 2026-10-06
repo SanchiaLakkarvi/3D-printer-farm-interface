@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, CheckCircle2, Upload } from "lucide-react";
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { api, ApiError, type GcodeValidation, type JobSubmission, type Material } from "@/lib/api/client";
 import { formatCost, formatDuration, formatWhen, PRINTER_LABELS, printerAcceptsJobs } from "@/lib/api/format";
 
@@ -28,10 +28,6 @@ export function LiveUpload({ role, openJobs }: Props) {
   const [submitted, setSubmitted] = useState<JobSubmission | null>(null);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    api.materials().then(setMaterials).catch(() => setMaterials([]));
-  }, []);
-
   const required = result?.required_material?.toUpperCase() ?? null;
   const matching = materials.filter((m) => m.type.toUpperCase() === required);
   const usablePrinters = (result?.compatible_printers ?? []).filter((p) => printerAcceptsJobs(p.status));
@@ -53,11 +49,17 @@ export function LiveUpload({ role, openJobs }: Props) {
     setFile(picked);
     setChecking(true);
     try {
-      const checked = await api.validate(picked);
+      const [checked, availableMaterials] = await Promise.all([
+        api.validate(picked),
+        api.materials(),
+      ]);
       setResult(checked);
+      setMaterials(availableMaterials);
       const first = checked.compatible_printers.find((p) => printerAcceptsJobs(p.status));
       if (first) setPrinterId(first.printer_id);
-      const only = materials.filter((m) => m.type.toUpperCase() === checked.required_material?.toUpperCase());
+      const only = availableMaterials.filter(
+        (m) => m.type.toUpperCase() === checked.required_material?.toUpperCase(),
+      );
       if (only.length === 1) setMaterialId(only[0].id);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Validation failed.");

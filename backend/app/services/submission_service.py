@@ -25,9 +25,10 @@ from app.core.exceptions import (
     PayloadTooLargeError,
     UnprocessableError,
 )
-from app.models.enums import CheckType, JobStatus, PrinterStatus
+from app.models.enums import CheckType, JobStatus, NotificationType, PrinterStatus, UserRole
 from app.models.job_validation import JobValidation
 from app.models.material import Material
+from app.models.notification import Notification
 from app.models.print_job import PrintJob
 from app.models.printer import Printer
 from app.models.user import User
@@ -208,6 +209,19 @@ def submit_job(
             message=message, checked_at=now,
         )
         for kind, message in passed_checks.items()
+    )
+    farmer_ids = db.scalars(select(User.id).where(User.role == UserRole.FARMER)).all()
+    db.add_all(
+        Notification(
+            id=uuid.uuid4(),
+            user_id=farmer_id,
+            job_id=job_id,
+            type=NotificationType.JOB_SUBMITTED,
+            message=f"{safe_name} was added to the queue for {printer.model} ({printer.location}).",
+            is_read=False,
+            sent_at=now,
+        )
+        for farmer_id in farmer_ids
     )
     try:
         db.commit()
