@@ -1,6 +1,6 @@
 """Notification service — a user's own in-app notifications.
 
-Notifications are written by the printer sync loop; this module only reads them
+Notifications are written by lifecycle services; this module only reads them
 and tracks read state. Every query is scoped to the requesting user.
 """
 

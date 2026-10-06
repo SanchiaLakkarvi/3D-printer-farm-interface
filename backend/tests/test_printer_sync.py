@@ -23,6 +23,7 @@ from app.models.material import Material
 from app.models.notification import Notification
 from app.models.print_job import PrintJob
 from app.models.printer import Printer
+from app.models.user import User
 from app.services.printer_sync_service import START_GRACE, sync_all_printers, sync_printer
 from tests.test_jobs_reports import STUDENT_EMAIL, STUDENT_PASSWORD, _seed_profile
 
@@ -142,7 +143,7 @@ def test_progress_is_recorded_while_printing(world) -> None:
     assert job.printer_job_id == 3 and job.actual_duration_min == 30.0
 
 
-def test_finished_completes_job_and_starts_next(world) -> None:
+def test_finished_completes_job_but_waits_for_physical_removal(world) -> None:
     db, printer, make_job = world
     done = make_job(JobStatus.PRINTING, started_at=NOW - timedelta(minutes=30))
     nxt = make_job(minutes_ago=1)
@@ -153,9 +154,44 @@ def test_finished_completes_job_and_starts_next(world) -> None:
 
     assert done.status is JobStatus.COMPLETED and _utc(done.completed_at) == NOW
     assert done.actual_filament_g == 10.0
-    assert not folder.exists()  # print file is not kept after completion
+    assert folder.exists()  # retained until a farmer confirms physical removal
+    assert nxt.status is JobStatus.QUEUED
+    assert _notifications(db) == [NotificationType.JOB_COMPLETED]
+
+    done.status = JobStatus.READY_FOR_COLLECTION
+    db.commit()
+    sync_printer(db, printer, FakePort(PrinterState.READY), NOW + timedelta(seconds=5))
     assert nxt.status is JobStatus.PRINTING
-    assert _notifications(db) == [NotificationType.JOB_COMPLETED, NotificationType.JOB_STARTED]
+
+
+def test_finished_print_notifies_every_farmer(world) -> None:
+    db, printer, make_job = world
+    job = make_job(JobStatus.PRINTING, started_at=NOW - timedelta(minutes=30))
+    farmers = [
+        User(
+            id=uuid.uuid4(),
+            email=f"farmer{number}@example.test",
+            first_name="Farm",
+            last_name=str(number),
+            role=UserRole.FARMER,
+            created_at=NOW,
+        )
+        for number in range(2)
+    ]
+    db.add_all(farmers)
+    db.commit()
+
+    sync_printer(db, printer, FakePort(PrinterState.FINISHED), NOW)
+
+    notifications = list(db.scalars(select(Notification).order_by(Notification.sent_at)))
+    assert {notification.user_id for notification in notifications} == {
+        job.user_id,
+        farmers[0].id,
+        farmers[1].id,
+    }
+    farmer_notifications = [n for n in notifications if n.user_id != job.user_id]
+    assert all(n.type is NotificationType.JOB_COMPLETED for n in farmer_notifications)
+    assert all("needs to be removed" in n.message for n in farmer_notifications)
 
 
 def test_stale_finished_reading_does_not_end_a_new_job(world) -> None:

@@ -28,6 +28,7 @@ Edit `backend/.env` (never commit this file):
 | `DATABASE_URL` | Prefer the Supabase **Session pooler** URI (IPv4). Prefix with `postgresql+psycopg://`. Direct `db.*.supabase.co` is IPv6-only and often fails inside Docker Desktop on macOS. Pooler username is `postgres.<project-ref>`. |
 | `AUTH_ADAPTER` | `supabase` for real Auth |
 | `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` | Server-only; from Supabase project settings |
+| `ANTHROPIC_API_KEY` | Optional server-only key for student troubleshooting help; empty returns a clear unavailable message |
 
 Full variable list and Auth details: [`backend/README.md`](backend/README.md). Frontend API base URL for Compose is set in `docker-compose.yml` (`NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`).
 
@@ -73,7 +74,7 @@ Compose loads `backend/.env`, builds three images, and starts:
 | Service | Container | Port | Build context |
 |---|---|---|---|
 | `mockserver` | `mockserver` | 8080 | `./mockserver` |
-| `backend` | `backend` | 8000 | `./backend` |
+| `backend` | `backend` | 8000 | repository root (`backend/Dockerfile`) |
 | `frontend` | `frontend` | 5173 | `./frontend/UWA-3D-Print-Farm` |
 
 Published URLs:
@@ -87,7 +88,7 @@ Published URLs:
 | http://localhost:8080/monitor | Mock printer live monitor |
 | http://localhost:8080/docs | Mock printer operator API |
 
-`frontend` depends on `backend`; `backend` depends on `mockserver` and reaches it at `http://mockserver:8080` (`MOCK_PRINTER_BASE_URL`). The browser calls the API at `http://localhost:8000` (`NEXT_PUBLIC_API_BASE_URL` in `docker-compose.yml`). Uploads persist in `./backend/storage` (mounted into the `backend` container; `FILE_STORAGE_ROOT` / `MAX_UPLOAD_BYTES` are environment-driven). Authenticated submitters can `POST /api/jobs/upload` (multipart `.gcode` / `.gco`) to create a `pending_selection` Print Job; unauthenticated, wrong-extension, oversize, and write/DB failures reject without lasting jobs or orphan files. Postgres and Auth come from Supabase (no local database container). Migrations are **not** applied on boot (`RUN_MIGRATIONS=0` against the shared DB).
+`frontend` depends on `backend`; `backend` depends on `mockserver` and reaches it at `http://mockserver:8080` (`MOCK_PRINTER_BASE_URL`). The browser calls the API at `http://localhost:8000` (`NEXT_PUBLIC_API_BASE_URL` in `docker-compose.yml`). Uploads persist in `./backend/storage` (mounted into the `backend` container; `FILE_STORAGE_ROOT` / `MAX_UPLOAD_BYTES` are environment-driven). `Docs/help` is copied into the backend image and mounted read-only at `/app/help`; the public auth screens call `POST /api/help/chat`, while the Anthropic key remains server-only. If the key is empty, the help entry remains visible and shows the API's `503 HELP_UNAVAILABLE` message. The help limiter is in-memory per backend container, not a shared global limit. Authenticated submitters can `POST /api/jobs/upload` (multipart `.gcode` / `.gco`) to create a `pending_selection` Print Job; unauthenticated, wrong-extension, oversize, and write/DB failures reject without lasting jobs or orphan files. Postgres and Auth come from Supabase (no local database container). Migrations are **not** applied on boot (`RUN_MIGRATIONS=0` against the shared DB).
 
 Demo Admin and Farmer accounts already exist in the shared Supabase project. Sign in from the UI, or via `POST /api/auth/signin` in `/docs` then **Authorize** with `Bearer <access_token>`.
 
@@ -767,13 +768,13 @@ Collection Notification
 - Email/password Auth with Student Sign-up (email confirmation), Sign-in, `/me`, and RBAC probes
 - G-code upload and validation (`backend/app/validation`), compatible-printer selection, job submission
 - Per-printer print queue with estimated start and completion times; print history and farm statistics
-- PrusaLink printer adapter and background sync (send queued jobs, track status, notification rows), tested against the mock printers
-- Frontend: live dashboard, upload flow, and queue / job history
+- PrusaLink printer adapter and background sync (send queued jobs, track status, student and Farmer notification rows), tested against the mock printers
+- Frontend: live dashboard, upload flow, queue / job history, in-app notifications, and Farmer completed-print collection action
 - Email/password Auth with Student Sign-up (6-digit email OTP confirmation), Sign-in, `/me`, and RBAC probes
 
 ### Not Yet Finalised / not built
 
-- Frontend: Notifications page, Farmer screens (collection, maintenance) and Admin screens (users, pricing, materials)
+- Frontend: remaining Farmer maintenance screens and Admin screens (users, pricing, materials)
 - PrusaLink against a real printer (only tested with the mock; auth and firmware behaviour unconfirmed)
 - UWA-approved G-code validation profiles and policy values
 - Pricing values

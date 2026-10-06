@@ -4,15 +4,19 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.adapters.auth.fake import FakeAuthAdapter
 from app.adapters.printer.port import PrinterConflictError, PrinterUnreachableError
-from app.models.enums import JobStatus, PrinterStatus, UserRole
+from app.models.collection_record import CollectionRecord
+from app.models.enums import JobStatus, NotificationType, PrinterStatus, UserRole
 from app.models.material import Material
+from app.models.notification import Notification
 from app.models.print_job import PrintJob
 from app.models.printer import Printer
 from app.services import job_control_service
@@ -50,7 +54,7 @@ class RecordingPort:
 
 
 @pytest.fixture()
-def farm(auth_client: TestClient, db_session: Session, auth_adapter: FakeAuthAdapter, monkeypatch):
+def farm(auth_client: TestClient, db_session: Session, auth_adapter: FakeAuthAdapter, monkeypatch, tmp_path: Path):
     student = _seed_profile(
         db_session=db_session, auth_adapter=auth_adapter, email=STUDENT_EMAIL,
         password=STUDENT_PASSWORD, role=UserRole.STUDENT,
@@ -68,9 +72,14 @@ def farm(auth_client: TestClient, db_session: Session, auth_adapter: FakeAuthAda
     db_session.commit()
 
     def make_job(status: JobStatus = JobStatus.PRINTING, printer_job_id: int | None = 7) -> PrintJob:
+        job_id = uuid.uuid4()
+        folder = tmp_path / str(job_id)
+        folder.mkdir()
+        gcode = folder / "part.gcode"
+        gcode.write_text("G28\n")
         job = PrintJob(
-            id=uuid.uuid4(), user_id=student.id, printer_id=printer.id, material_id=material.id,
-            gcode_path="/tmp/part.gcode", status=status, est_duration_min=60.0,
+            id=job_id, user_id=student.id, printer_id=printer.id, material_id=material.id,
+            gcode_path=str(gcode), original_filename="part.gcode", status=status, est_duration_min=60.0,
             submitted_at=NOW - timedelta(minutes=10), started_at=NOW - timedelta(minutes=5),
             printer_job_id=printer_job_id,
         )
@@ -144,3 +153,53 @@ def test_printer_errors_are_reported(auth_client: TestClient, farm, error: Excep
 
     assert response.status_code == code
     assert port.closed
+
+
+def test_farmer_collects_completed_print_and_notifies_student(
+    auth_client: TestClient, db_session: Session, farm,
+) -> None:
+    make_job, _, farmer, _ = farm
+    job = make_job(JobStatus.COMPLETED)
+    path = Path(job.gcode_path)
+
+    response = auth_client.post(f"/api/jobs/{job.id}/collect", headers=farmer)
+
+    assert response.status_code == 200
+    assert response.json() == {"job_id": str(job.id), "action": "collect"}
+    db_session.refresh(job)
+    assert job.status is JobStatus.READY_FOR_COLLECTION
+    record = db_session.scalars(select(CollectionRecord).where(CollectionRecord.job_id == job.id)).one()
+    assert record.farmer_id is not None
+    assert record.removed_at is not None and record.ready_at is not None
+    notification = db_session.scalars(
+        select(Notification).where(Notification.job_id == job.id)
+    ).one()
+    assert notification.user_id == job.user_id
+    assert notification.type is NotificationType.READY_FOR_COLLECTION
+    assert notification.message == "Your print part.gcode is ready to collect."
+    assert not path.exists()
+
+
+def test_collect_is_idempotent(auth_client: TestClient, db_session: Session, farm) -> None:
+    make_job, _, farmer, _ = farm
+    job = make_job(JobStatus.COMPLETED)
+
+    first = auth_client.post(f"/api/jobs/{job.id}/collect", headers=farmer)
+    second = auth_client.post(f"/api/jobs/{job.id}/collect", headers=farmer)
+
+    assert first.status_code == second.status_code == 200
+    assert len(db_session.scalars(select(CollectionRecord).where(CollectionRecord.job_id == job.id)).all()) == 1
+    assert len(db_session.scalars(select(Notification).where(Notification.job_id == job.id)).all()) == 1
+
+
+def test_student_cannot_collect_completed_print(auth_client: TestClient, farm) -> None:
+    make_job, _, _, student = farm
+    job = make_job(JobStatus.COMPLETED)
+    assert auth_client.post(f"/api/jobs/{job.id}/collect", headers=student).status_code == 403
+
+
+def test_only_completed_print_can_be_collected(auth_client: TestClient, farm) -> None:
+    make_job, _, farmer, _ = farm
+    job = make_job(JobStatus.FAILED)
+    response = auth_client.post(f"/api/jobs/{job.id}/collect", headers=farmer)
+    assert response.status_code == 409

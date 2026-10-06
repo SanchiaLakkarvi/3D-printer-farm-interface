@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pause, Play } from "lucide-react";
+import { PackageCheck, Pause, Play } from "lucide-react";
 import { api, type QueueTile } from "@/lib/api/client";
 import { formatDuration, formatWhen, jobStatusLabel, PRINTER_LABELS } from "@/lib/api/format";
 import { usePolled } from "./use-polled";
@@ -37,6 +37,19 @@ export function LiveQueue({ role, view }: Props) {
       await queue.reload();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Could not reach the printer.");
+    } finally {
+      setBusyJob(null);
+    }
+  }
+
+  async function collect(jobId: string) {
+    setBusyJob(jobId);
+    setActionError("");
+    try {
+      await api.collectJob(jobId);
+      await Promise.all([history.reload(), queue.reload(), printers.reload()]);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not mark the print ready to collect.");
     } finally {
       setBusyJob(null);
     }
@@ -106,7 +119,7 @@ export function LiveQueue({ role, view }: Props) {
         <div className="farm-scroll">
           <table className="farm-table">
             <thead>
-              <tr><th>File</th><th>Printer</th><th>Material</th><th>Status</th><th>Print time</th><th>Filament</th><th>Cost</th><th>Finished</th></tr>
+              <tr><th>File</th><th>Printer</th><th>Material</th><th>Status</th><th>Print time</th><th>Filament</th><th>Cost</th><th>Finished</th>{canControl && <th>Actions</th>}</tr>
             </thead>
             <tbody>
               {(history.data ?? []).filter((j) => j.status !== "queued" && j.status !== "submitted" && j.status !== "printing").map((j) => (
@@ -119,10 +132,19 @@ export function LiveQueue({ role, view }: Props) {
                   <td>{(j.actual_filament_g ?? j.est_filament_g) != null ? `${(j.actual_filament_g ?? j.est_filament_g)!.toFixed(1)} g` : "—"}</td>
                   <td>${j.calculated_cost_usd.toFixed(2)}</td>
                   <td>{formatWhen(j.completed_at)}</td>
+                  {canControl && (
+                    <td>
+                      {j.status === "completed" && (
+                        <button className="farm-control" onClick={() => void collect(j.job_id)} disabled={busyJob !== null} title="Confirm the print has been removed">
+                          <PackageCheck />Collect
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
               {history.data && history.data.filter((j) => j.status !== "queued" && j.status !== "submitted" && j.status !== "printing").length === 0 && (
-                <tr><td colSpan={8} className="farm-empty">No finished jobs yet.</td></tr>
+                <tr><td colSpan={canControl ? 9 : 8} className="farm-empty">No finished jobs yet.</td></tr>
               )}
             </tbody>
           </table>

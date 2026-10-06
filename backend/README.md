@@ -36,6 +36,13 @@ Key settings:
 | `JWT_SECRET_KEY` | Legacy placeholder; sessions come from Supabase Auth when `AUTH_ADAPTER=supabase` |
 | `CORS_ORIGINS` | Allowed frontend origins (comma-separated; local Vite uses `http://localhost:5173`) |
 | `MOCK_PRINTER_BASE_URL` | URL of the mock printer server |
+| `ANTHROPIC_API_KEY` | Server-only Anthropic key; empty means help chat returns `503 HELP_UNAVAILABLE` |
+| `ANTHROPIC_MODEL` | Anthropic Messages model used by student troubleshooting help |
+| `HELP_DOCS_ROOT` | Directory containing the approved `student-help.md` source |
+| `HELP_MAX_MESSAGE_CHARS` / `HELP_MAX_HISTORY_MESSAGES` | Public request caps |
+| `HELP_MAX_OUTPUT_TOKENS` | Maximum provider output tokens per reply |
+| `HELP_RATE_LIMIT_REQUESTS` / `HELP_RATE_LIMIT_WINDOW_SECONDS` | Per-IP in-memory request limit |
+| `HELP_PROVIDER_TIMEOUT_S` | Bounded Anthropic request timeout |
 
 When `AUTH_ADAPTER=supabase`, enable **Confirm email** in the Supabase Dashboard
 (Authentication → Sign In / Providers → Email). Set Site URL to the UI origin
@@ -127,9 +134,18 @@ stop with `docker compose down`.
 | `POST` | `/api/auth/signin` | public | email + password → `access_token` + safe profile (creates student on first confirmed Sign-in) |
 | `GET` | `/api/auth/me` | Bearer | profile for the token subject |
 | `POST` | `/api/auth/signout` | public | `204`; no server session store |
+| `POST` | `/api/help/chat` | public | Grounded student troubleshooting help; stateless message + bounded history → `{message}` |
 | `GET` | `/api/rbac/farmer` | Bearer + Farmer | probe; Admin OK (Admin ⊃ Farmer); Student `403` |
 | `GET`/`POST` | `/api/rbac/admin` | Bearer + Admin | probe; Farmer/Student `403`; POST body `role` ignored |
 | `GET` | `/api/rbac/submit` | Bearer + submit | probe; Student/Farmer/Admin OK (hierarchy) |
+
+The help endpoint loads only `Docs/help/student-help.md`, caches it in memory,
+and sends that reference to Anthropic from FastAPI. The API key is never sent to
+the browser. Passwords, confirmation URLs, token hashes, and JWT-like strings
+are refused before the provider is called. The browser keeps only a short
+conversation window; there is no server-side chat store. Rate limiting is
+in-memory and therefore applies per backend process/container. A multi-instance
+deployment needs a shared limiter before relying on this as a global quota.
 
 ## Job upload endpoints
 

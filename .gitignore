@@ -9,12 +9,13 @@ venv/
 .vscode/
 AGENTS.md
 skills-lock.json
-Explanation/
+Explanation/*
 .agents/
 .DS_Store
 frontend/**/node_modules/
 frontend/**/.wrangler/
 frontend/**/.sites-runtime/
+frontend/**/*.tsbuildinfo
 *.db
 Docs/specs/
 Docs/adr/

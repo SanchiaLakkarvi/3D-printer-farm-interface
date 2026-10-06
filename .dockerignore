@@ -1,0 +1,15 @@
+**
+!backend/
+!backend/**
+!Docs/
+!Docs/help/
+!Docs/help/**
+
+backend/.env
+backend/.venv/
+backend/.pytest_cache/
+backend/storage/**
+backend/tests/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/.DS_Store
