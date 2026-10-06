@@ -87,6 +87,7 @@ export type JobSubmission = {
 };
 
 export type NotificationType =
+  | "job_submitted"
   | "job_started"
   | "job_completed"
   | "job_error"

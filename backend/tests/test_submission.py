@@ -12,13 +12,21 @@ from sqlalchemy.orm import Session
 
 from app.adapters.auth.fake import FakeAuthAdapter
 from app.core.config import settings
-from app.models.enums import PrinterStatus, UserRole
+from app.models.enums import NotificationType, PrinterStatus, UserRole
 from app.models.job_validation import JobValidation
 from app.models.material import Material
+from app.models.notification import Notification
 from app.models.print_job import PrintJob
 from app.models.printer import Printer
 from app.services.submission_service import parse_duration_min
-from tests.test_jobs_reports import STUDENT_EMAIL, STUDENT_PASSWORD, _seed_profile, _token
+from tests.test_jobs_reports import (
+    FARMER_EMAIL,
+    FARMER_PASSWORD,
+    STUDENT_EMAIL,
+    STUDENT_PASSWORD,
+    _seed_profile,
+    _token,
+)
 
 DATA = Path(__file__).resolve().parents[1] / "app" / "validation" / "data"
 SAMPLE = DATA / "Rook1_0.4n_0.15mm_PLA_COREONE_1h5m.gcode"
@@ -49,6 +57,10 @@ def env(
         db_session=db_session, auth_adapter=auth_adapter, email=STUDENT_EMAIL,
         password=STUDENT_PASSWORD, role=UserRole.STUDENT,
     )
+    farmer = _seed_profile(
+        db_session=db_session, auth_adapter=auth_adapter, email=FARMER_EMAIL,
+        password=FARMER_PASSWORD, role=UserRole.FARMER,
+    )
     pla = Material(id=uuid.uuid4(), name="PLA White", type="PLA", colour="white")
     petg = Material(id=uuid.uuid4(), name="PETG Black", type="PETG", colour="black")
     abs_ = Material(id=uuid.uuid4(), name="ABS Grey", type="ABS", colour="grey")
@@ -57,8 +69,12 @@ def env(
     db_session.add_all([pla, petg, abs_, core_one, xl])
     db_session.commit()
     headers = {"Authorization": f"Bearer {_token(auth_client, STUDENT_EMAIL, STUDENT_PASSWORD)}"}
+    farmer_headers = {
+        "Authorization": f"Bearer {_token(auth_client, FARMER_EMAIL, FARMER_PASSWORD)}"
+    }
     return dict(client=auth_client, db=db_session, headers=headers, pla=pla, petg=petg,
-                abs=abs_, core_one=core_one, xl=xl, tmp=tmp_path)
+                abs=abs_, core_one=core_one, xl=xl, tmp=tmp_path, farmer=farmer,
+                farmer_headers=farmer_headers)
 
 
 def _file(path: Path = SAMPLE) -> dict:
@@ -116,6 +132,18 @@ def test_submit_queues_job_and_stores_file(env) -> None:
     rows = env["db"].scalars(select(JobValidation).where(JobValidation.job_id == job.id)).all()
     assert len(rows) == 4 and all(r.passed for r in rows)
 
+    queue = env["client"].get("/api/jobs/queue", headers=env["farmer_headers"])
+    assert queue.status_code == 200
+    assert [tile["job_id"] for tile in queue.json()] == [body["job_id"]]
+
+    notifications = env["client"].get("/api/notifications", headers=env["farmer_headers"])
+    assert notifications.status_code == 200
+    assert notifications.json()[0]["type"] == NotificationType.JOB_SUBMITTED.value
+    row = env["db"].scalars(
+        select(Notification).where(Notification.job_id == job.id)
+    ).one()
+    assert row.user_id == env["farmer"].id
+
 
 @pytest.mark.parametrize(
     ("printer_key", "material_key", "code"),
@@ -156,4 +184,10 @@ def test_submit_rejects_empty_and_oversized(env, monkeypatch: pytest.MonkeyPatch
 
 def test_upload_requires_auth(auth_client: TestClient) -> None:
     resp = auth_client.post("/api/jobs/validate", files=_file())
+    assert resp.status_code == 401
+    resp = auth_client.post(
+        "/api/jobs",
+        data={"printer_id": str(uuid.uuid4()), "material_id": str(uuid.uuid4())},
+        files=_file(),
+    )
     assert resp.status_code == 401

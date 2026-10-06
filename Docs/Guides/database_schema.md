@@ -141,7 +141,10 @@ Credentials and sessions live in Supabase Auth; this table does not store passwo
 **Workflow-critical separations**
 - `job_validations` is split out from `print_jobs` because the assignment explicitly separates "validation conditions" from "extracted metadata" (Section 2.3). One job can have several validation checks (profile, material, bed size, config), each independently pass/fail — this doesn't map cleanly onto flat columns on `print_jobs`.
 - `collection_records` is separate from `print_jobs` status because the Farmer collection workflow (ready → removed → collected) has its own timestamps and an owner (`farmer_id`) distinct from the job's submitter. Keeping it separate also simplifies the Farmer's "completed jobs" view.
-- `notifications` references both `user_id` and `job_id` so the system can notify on start/complete/error, and could support farmer-facing notifications later without schema changes.
+- `notifications` references both `user_id` and `job_id`. Job owners receive
+  lifecycle updates, while every Farmer receives a `job_submitted` notification
+  when a validated job enters the queue and a `job_completed` notification when
+  a finished print needs physical removal.
 - Upload creates jobs in `pending_selection` with a relative `gcode_path` and optional `original_filename` before content validation (#3) or printer selection (#4). G-code **retention** (keep while retry may be needed, including `failed`; delete only after removed/collected and no longer needs retry) is owned by the job-lifecycle slice — upload does not delete-on-complete.
 
 **What's deliberately not modelled yet**
