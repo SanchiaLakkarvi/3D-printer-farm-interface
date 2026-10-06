@@ -355,9 +355,12 @@ matters on macOS where the SDK's `inotify` dependency does not load.
 
 ## Live monitor
 
-Open **http://localhost:8080/monitor** to watch the mock in real time. It refreshes every
-second and shows, for each printer, its state, the file it is printing, progress, temperatures and
-how many status polls it has answered, plus a list of every action the backend has sent it
+Open **http://localhost:8080/monitor** to watch the mock in real time. It is laid out like a
+Prusa Connect farm dashboard and refreshes every second. Each printer is a tile with its state,
+the file it is printing, progress, time remaining, temperatures, loaded material and how many
+status polls it has answered. Filter chips narrow the tiles by state. Click a tile for a
+PrusaLink-style detail panel (temperatures, progress ring, job times, file check and that
+printer's recent actions). Below the tiles is a list of every action the backend has sent
 (upload, start, stop, pause, resume) with the reply code.
 
 Status polls and Digest login challenges happen every couple of seconds, so they are only
