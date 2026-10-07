@@ -159,14 +159,6 @@ Evidence: E01, E03–E08, E10–E12. These are code/configuration findings and e
 
 *Figure 2. Staff usage-report overview showing filters, summary figures and charts based on demonstration data.*
 
-### Recommended sequence
-
-1. **Confirm the handover version:** select the exact commit/release, align the six documents to it and label older guidance as historical where needed. Recheck this summary if code changes.
-2. **Reproduce and record the demonstration:** execute the relevant automated tests and role-based scenarios against an isolated mock environment, including invalid uploads, pause/resume, completion blocking, removal notifications, reporting/CSV and chatbot unavailability. Record actual outcomes in document 06.
-3. **Complete access and operating decisions:** nominate the receiving owner, provision staff access, decide Supabase/Anthropic ownership and billing, confirm currency and support contact, and verify backup/restore for records and required files.
-4. **Validate the physical environment:** reconcile actual inventory with configured profiles, confirm firmware/network access and run supervised success/failure/removal tests. Demonstration success alone is insufficient for this step.
-5. **Record client acceptance:** review delivered scope and known gaps, record any conditions, and authorise the agreed operating environment through the client's normal process.
-
 ## 7. Deliverables and document index
 
 The repository contains frontend/backend source, mock-printer code/configuration, database migrations, dependency/build files, sample print files and test sources. Existing guides remain supporting material and should be checked against this version before reuse.
