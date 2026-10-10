@@ -22,7 +22,7 @@ The client required an easier platform to manage the university's Prusa 3D print
 
 #### System Architecture
 
-The team developed a web application using a FastAPI backend and browser-based frontend, supported by Supabase for authentication and shared data services. A PrusaLink adapter enables printer communication, while Docker Compose manages local services and mock PrusaLink printers support testing without physical hardware.
+![alt text](image.png)
 
 #### Implemented Features
 
